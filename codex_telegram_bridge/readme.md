@@ -43,6 +43,7 @@ Optional flags:
 - `--progress-edit-every FLOAT` (default `2.5`)
 - `--progress-silent/--no-progress-silent` (default silent)
 - `--final-notify/--no-final-notify` (default notify via new message)
+- `--ignore-backlog/--process-backlog` (default ignore pending updates)
 
 ## Option 2: MCP server
 
@@ -52,6 +53,10 @@ Run:
 uv run mcp-bridge
 ```
 
+Optional flags:
+
+- `--ignore-backlog/--process-backlog` (default ignore pending updates)
+
 ## Option 3: tmux
 
 Reply injector:
@@ -59,6 +64,10 @@ Reply injector:
 ```bash
 uv run tmux-reply
 ```
+
+Optional flags:
+
+- `--ignore-backlog/--process-backlog` (default ignore pending updates)
 
 Notifier (call from your existing hook):
 

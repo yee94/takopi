@@ -279,6 +279,11 @@ def run(
         "--final-notify/--no-final-notify",
         help="Send the final response as a new message (not an edit).",
     ),
+    ignore_backlog: bool = typer.Option(
+        True,
+        "--ignore-backlog/--process-backlog",
+        help="Skip pending Telegram updates that arrived before startup.",
+    ),
 ) -> None:
     config = load_telegram_config()
     token = config_get(config, "bot_token") or ""
@@ -327,6 +332,7 @@ def run(
         max_workers = None
     pool = ThreadPoolExecutor(max_workers=max_workers or 4)
     offset: Optional[int] = None
+    ignore_backlog = bool(ignore_backlog)
 
     log(f"[startup] pwd={startup_pwd}")
     log("Option1 bridge running (codex exec). Long-polling Telegram...")
@@ -481,6 +487,13 @@ def run(
             log(f"[telegram] get_updates error: {e}")
             time.sleep(2.0)
             continue
+
+        if ignore_backlog:
+            if updates:
+                offset = updates[-1]["update_id"] + 1
+                log(f"[startup] drained {len(updates)} pending update(s)")
+                continue
+            ignore_backlog = False
 
         for upd in updates:
             offset = upd["update_id"] + 1

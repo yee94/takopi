@@ -32,7 +32,13 @@ def tmux_send_text(target: str, text: str, press_enter: bool = True) -> None:
         subprocess.check_call(["tmux", "send-keys", "-t", target, "Enter"])
 
 
-def run() -> None:
+def run(
+    ignore_backlog: bool = typer.Option(
+        True,
+        "--ignore-backlog/--process-backlog",
+        help="Skip pending Telegram updates that arrived before startup.",
+    ),
+) -> None:
     config = load_telegram_config()
     token = config_get(config, "bot_token") or ""
     db_path = config_get(config, "bridge_db") or "./bridge_routes.sqlite3"
@@ -42,6 +48,7 @@ def run() -> None:
     store = RouteStore(db_path)
 
     offset: Optional[int] = None
+    ignore_backlog = bool(ignore_backlog)
     print("Option3 reply bot running (tmux injector). Long-polling Telegram...")
 
     while True:
@@ -51,6 +58,13 @@ def run() -> None:
             print(f"[telegram] get_updates error: {e}")
             time.sleep(2.0)
             continue
+
+        if ignore_backlog:
+            if updates:
+                offset = updates[-1]["update_id"] + 1
+                print(f"[startup] drained {len(updates)} pending update(s)")
+                continue
+            ignore_backlog = False
 
         for upd in updates:
             offset = upd["update_id"] + 1
