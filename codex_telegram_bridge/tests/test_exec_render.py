@@ -28,10 +28,10 @@ def test_render_event_cli_sample_stream() -> None:
     assert out == [
         "thread started",
         "turn started",
-        "[0] _**Searching for README files**_",
+        "[0] **Searching for README files**",
         "[1] ▸ running: `bash -lc ls`",
         "[1] ✓ ran: `bash -lc ls` (exit 0)",
-        "[2] _**Checking repository root for README**_",
+        "[2] **Checking repository root for README**",
         "assistant:",
         "  Yep — there’s a `README.md` in the repository root.",
         "turn completed",
