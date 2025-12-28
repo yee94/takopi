@@ -225,7 +225,7 @@ class TelegramClient:
         chat_id: int,
         text: str,
         reply_to_message_id: Optional[int] = None,
-        disable_notification: bool = False,
+        disable_notification: Optional[bool] = False,
         entities: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         if len(text) > TELEGRAM_HARD_LIMIT:
@@ -233,13 +233,40 @@ class TelegramClient:
         params: Dict[str, Any] = {
             "chat_id": chat_id,
             "text": text,
-            "disable_notification": disable_notification,
         }
+        if disable_notification is not None:
+            params["disable_notification"] = disable_notification
         if reply_to_message_id is not None:
             params["reply_to_message_id"] = reply_to_message_id
         if entities is not None:
             params["entities"] = entities
         return self._call("sendMessage", params)
+
+    def edit_message_text(
+        self,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        entities: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        if len(text) > TELEGRAM_HARD_LIMIT:
+            raise ValueError("edit_message_text received too-long text")
+        params: Dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+        }
+        if entities is not None:
+            params["entities"] = entities
+        return self._call("editMessageText", params)
+
+    def delete_message(self, chat_id: int, message_id: int) -> bool:
+        params: Dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+        }
+        res = self._call("deleteMessage", params)
+        return bool(res)
 
     def send_message_chunked(
         self,
