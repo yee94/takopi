@@ -43,6 +43,7 @@ def run(
     bot = TelegramClient(token)
     store = RouteStore(db_path)
 
+    print("WARNING: tmux bridge is untested; recommended: use exec-bridge.")
     offset: Optional[int] = None
     ignore_backlog = bool(ignore_backlog)
 

@@ -279,6 +279,7 @@ def run(
     bot = TelegramClient(token)
     store = RouteStore(db_path)
 
+    print("WARNING: MCP bridge is untested; recommended: use exec-bridge.")
     print(f"Starting MCP server: {mcp_cmd}")
     mcp = MCPStdioClient(mcp_cmd)
 
