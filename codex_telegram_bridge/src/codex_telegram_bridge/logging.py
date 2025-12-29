@@ -37,4 +37,5 @@ def setup_logging(*, debug: bool = False) -> None:
     console.setLevel(logging.DEBUG if debug else logging.INFO)
     console.setFormatter(fmt)
     console.addFilter(redactor)
+    root_logger.addFilter(redactor)
     root_logger.addHandler(console)

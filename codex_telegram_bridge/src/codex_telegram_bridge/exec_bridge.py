@@ -36,9 +36,18 @@ RESUME_LINE = re.compile(
 def extract_session_id(text: str | None) -> str | None:
     if not text:
         return None
-    if m := RESUME_LINE.search(text):
-        return m.group("id")
+    found = None
+    for match in RESUME_LINE.finditer(text):
+        found = match.group("id")
+    if found:
+        return found
     return None
+
+
+def resolve_resume_session(
+    text: str | None, reply_text: str | None
+) -> str | None:
+    return extract_session_id(text) or extract_session_id(reply_text)
 
 
 async def _drain_stderr(stderr: asyncio.StreamReader | None, tail: deque[str]) -> None:
@@ -72,6 +81,7 @@ async def manage_subprocess(*args, **kwargs):
 
 
 TELEGRAM_MARKDOWN_LIMIT = 3500
+PROGRESS_EDIT_EVERY_S = 2.0
 
 
 def _clamp_tg_text(text: str, limit: int = TELEGRAM_MARKDOWN_LIMIT) -> str:
@@ -436,6 +446,8 @@ async def _handle_message(
     user_msg_id: int,
     text: str,
     resume_session: str | None,
+    clock: Callable[[], float] = time.monotonic,
+    progress_edit_every: float = PROGRESS_EDIT_EVERY_S,
 ) -> None:
     logger.debug(
         "[handle] incoming chat_id=%s message_id=%s resume=%r text=%s",
@@ -444,7 +456,7 @@ async def _handle_message(
         resume_session,
         text,
     )
-    started_at = time.monotonic()
+    started_at = clock()
     progress_renderer = ExecProgressRenderer(max_actions=5)
 
     progress_id: int | None = None
@@ -498,7 +510,7 @@ async def _handle_message(
             disable_notification=True,
         )
         progress_id = int(progress_msg["message_id"])
-        last_edit_at = time.monotonic()
+        last_edit_at = clock()
         logger.debug("[progress] sent chat_id=%s message_id=%s", chat_id, progress_id)
     except Exception as e:
         logger.info(
@@ -511,8 +523,8 @@ async def _handle_message(
             return
         if not progress_renderer.note_event(evt):
             return
-        now = time.monotonic()
-        if (now - last_edit_at) < 2.0:
+        now = clock()
+        if (now - last_edit_at) < progress_edit_every:
             return
         if edit_task is not None and not edit_task.done():
             return
@@ -547,7 +559,7 @@ async def _handle_message(
         await asyncio.gather(edit_task, return_exceptions=True)
 
     answer = answer or "(No agent_message captured from JSON stream.)"
-    elapsed = time.monotonic() - started_at
+    elapsed = clock() - started_at
     status = "done" if saw_agent_message else "error"
     final_md = (
         progress_renderer.render_final(elapsed, answer, status=status)
@@ -647,9 +659,8 @@ async def _run_main_loop(cfg: BridgeConfig) -> None:
             async for msg in poll_updates(cfg):
                 text = msg["text"]
                 user_msg_id = msg["message_id"]
-                resume_session = extract_session_id(text)
                 r = msg.get("reply_to_message") or {}
-                resume_session = resume_session or extract_session_id(r.get("text"))
+                resume_session = resolve_resume_session(text, r.get("text"))
 
                 await queue.put(
                     (msg["chat"]["id"], user_msg_id, text, resume_session)

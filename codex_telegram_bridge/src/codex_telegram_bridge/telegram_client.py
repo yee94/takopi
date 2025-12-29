@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
 
+from .logging import RedactTokenFilter
+
 logger = logging.getLogger(__name__)
+logger.addFilter(RedactTokenFilter())
 
 
 class TelegramAPIError(RuntimeError):
@@ -24,14 +28,23 @@ class TelegramClient:
     Minimal Telegram Bot API client.
     """
 
-    def __init__(self, token: str, timeout_s: float = 120) -> None:
+    def __init__(
+        self,
+        token: str,
+        timeout_s: float = 120,
+        client: httpx.AsyncClient | None = None,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
         if not token:
             raise ValueError("Telegram token is empty")
         self._base = f"https://api.telegram.org/bot{token}"
-        self._client = httpx.AsyncClient(timeout=timeout_s)
+        self._client = client or httpx.AsyncClient(timeout=timeout_s)
+        self._owns_client = client is None
+        self._sleep = sleep
 
     async def close(self) -> None:
-        await self._client.aclose()
+        if self._owns_client:
+            await self._client.aclose()
 
     async def _post(self, method: str, json_data: dict[str, Any]) -> Any:
         try:
@@ -50,7 +63,7 @@ class TelegramClient:
                     logger.warning(
                         "[telegram] 429 retry_after=%s method=%s", retry_after, method
                     )
-                    await asyncio.sleep(retry_after)
+                    await self._sleep(retry_after)
                     return await self._post(method, json_data)
                 raise TelegramAPIError(method, payload, resp.status_code)
             logger.debug("[telegram] response %s: %s", method, payload)
