@@ -441,41 +441,37 @@ async def _handle_message(
     last_edit_at = 0.0
     edit_task: asyncio.Task[None] | None = None
 
-    async def _edit_progress(md: str) -> None:
-        if progress_id is None:
-            return
-        rendered, entities = render_markdown(md)
-        if len(rendered) > TELEGRAM_TEXT_LIMIT:
-            rendered = truncate_for_telegram(rendered, TELEGRAM_TEXT_LIMIT)
-            entities = []
-        try:
-            await cfg.bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=progress_id,
-                text=rendered,
-                entities=entities or None,
-            )
-        except Exception as e:
-            logger.info(
-                "[progress] edit failed chat_id=%s message_id=%s: %s",
+	    async def _edit_progress(md: str) -> None:
+	        if progress_id is None:
+	            return
+	        rendered, entities = render_for_telegram(md, limit=TELEGRAM_TEXT_LIMIT)
+	        try:
+	            await cfg.bot.edit_message_text(
+	                chat_id=chat_id,
+	                message_id=progress_id,
+	                text=rendered,
+	                entities=entities,
+	            )
+	        except Exception as e:
+	            logger.info(
+	                "[progress] edit failed chat_id=%s message_id=%s: %s",
                 chat_id,
                 progress_id,
                 e,
             )
 
-    try:
-        initial_md = progress_renderer.render_progress(0.0)
-        initial_rendered, initial_entities = render_markdown(initial_md)
-        if len(initial_rendered) > TELEGRAM_TEXT_LIMIT:
-            initial_rendered = truncate_for_telegram(initial_rendered, TELEGRAM_TEXT_LIMIT)
-            initial_entities = []
-        progress_msg = await cfg.bot.send_message(
-            chat_id=chat_id,
-            text=initial_rendered,
-            entities=initial_entities or None,
-            reply_to_message_id=user_msg_id,
-            disable_notification=cfg.progress_silent,
-        )
+	    try:
+	        initial_md = progress_renderer.render_progress(0.0)
+	        initial_rendered, initial_entities = render_for_telegram(
+	            initial_md, limit=TELEGRAM_TEXT_LIMIT
+	        )
+	        progress_msg = await cfg.bot.send_message(
+	            chat_id=chat_id,
+	            text=initial_rendered,
+	            entities=initial_entities,
+	            reply_to_message_id=user_msg_id,
+	            disable_notification=cfg.progress_silent,
+	        )
         progress_id = int(progress_msg["message_id"])
         last_edit_at = time.monotonic()
         logger.debug("[progress] sent chat_id=%s message_id=%s", chat_id, progress_id)
