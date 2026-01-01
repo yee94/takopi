@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import os
+from typing import Callable
 
 import anyio
 import typer
 
 from . import __version__
+from .backends import EngineBackend
 from .bridge import BridgeConfig, _run_main_loop
 from .config import ConfigError, load_telegram_config
-from .engines import EngineBackend, get_backend, get_engine_config, list_backends
+from .engines import get_backend, get_engine_config, list_backends
 from .logging import setup_logging
 from .onboarding import check_setup, render_engine_choice, render_setup_guide
 from .telegram import TelegramClient
@@ -51,7 +53,11 @@ def _parse_bridge_config(
     chat_id = chat_id_value
 
     engine_cfg = get_engine_config(config, backend.id, config_path)
-    startup_msg = backend.startup_message(startup_pwd)
+    startup_msg = (
+        f"\N{OCTOPUS} **takopi is ready**\n\n"
+        f"agent: `{backend.id}`  \n"
+        f"working in: `{startup_pwd}`"
+    )
 
     bot = TelegramClient(token)
     runner = backend.build_runner(engine_cfg, config_path)
@@ -111,36 +117,32 @@ def app_main(
         raise typer.Exit(code=1)
 
 
-@app.command(help="Run with the Codex engine.")
-def codex(
-    final_notify: bool = typer.Option(
-        True,
-        "--final-notify/--no-final-notify",
-        help="Send the final response as a new message (not an edit).",
-    ),
-    debug: bool = typer.Option(
-        False,
-        "--debug/--no-debug",
-        help="Log engine JSONL, Telegram requests, and rendered messages.",
-    ),
-) -> None:
-    _run_engine(engine="codex", final_notify=final_notify, debug=debug)
+def make_engine_cmd(engine_id: str) -> Callable[..., None]:
+    def _cmd(
+        final_notify: bool = typer.Option(
+            True,
+            "--final-notify/--no-final-notify",
+            help="Send the final response as a new message (not an edit).",
+        ),
+        debug: bool = typer.Option(
+            False,
+            "--debug/--no-debug",
+            help="Log engine JSONL, Telegram requests, and rendered messages.",
+        ),
+    ) -> None:
+        _run_engine(engine=engine_id, final_notify=final_notify, debug=debug)
+
+    _cmd.__name__ = f"run_{engine_id}"
+    return _cmd
 
 
-@app.command(help="Run with the Claude engine.")
-def claude(
-    final_notify: bool = typer.Option(
-        True,
-        "--final-notify/--no-final-notify",
-        help="Send the final response as a new message (not an edit).",
-    ),
-    debug: bool = typer.Option(
-        False,
-        "--debug/--no-debug",
-        help="Log engine JSONL, Telegram requests, and rendered messages.",
-    ),
-) -> None:
-    _run_engine(engine="claude", final_notify=final_notify, debug=debug)
+def register_engine_commands() -> None:
+    for backend in list_backends():
+        help_text = f"Run with the {backend.id} engine."
+        app.command(name=backend.id, help=help_text)(make_engine_cmd(backend.id))
+
+
+register_engine_commands()
 
 
 def main() -> None:

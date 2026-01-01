@@ -106,9 +106,14 @@ Transforms takopi events into human-readable text:
 | `model.py` | Domain types: resume tokens, actions, events, run result |
 | `runner.py` | Runner protocol + event queue utilities |
 
-### `engines.py` - Engine backend registry
+### `backends.py` - Engine backend contracts
 
-Registers available engines and provides setup checks + runner construction.
+Defines `EngineBackend`, `SetupIssue`, and the `EngineConfig` type used by
+runner modules.
+
+### `engines.py` - Engine backend discovery
+
+Auto-discovers runner modules in `takopi.runners` that export `BACKEND`.
 
 ### `runners/` - Runner implementations
 

@@ -206,7 +206,12 @@ class RunningTask:
 
 async def _send_startup(cfg: BridgeConfig) -> None:
     logger.debug("[startup] message: %s", cfg.startup_msg)
-    sent = await cfg.bot.send_message(chat_id=cfg.chat_id, text=cfg.startup_msg)
+    sent, _ = await _send_or_edit_markdown(
+        cfg.bot,
+        chat_id=cfg.chat_id,
+        text=cfg.startup_msg,
+        limit=TELEGRAM_MARKDOWN_LIMIT,
+    )
     if sent is not None:
         logger.info("[startup] sent startup message to chat_id=%s", cfg.chat_id)
 

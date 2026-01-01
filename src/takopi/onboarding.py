@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -7,8 +8,9 @@ from typing import Sequence
 from rich.console import Console
 from rich.panel import Panel
 
+from .backends import EngineBackend, SetupIssue
+from .backends_helpers import install_issue
 from .config import ConfigError, HOME_CONFIG_PATH, load_telegram_config
-from .engines import EngineBackend, SetupIssue
 
 _OCTOPUS = "\N{OCTOPUS}"
 
@@ -26,7 +28,7 @@ class SetupResult:
 def config_issue(path: Path) -> SetupIssue:
     config_display = _config_path_display(path)
     return SetupIssue(
-        "Create a config",
+        "create a config",
         (
             f"   [dim]{config_display}[/]",
             "",
@@ -35,7 +37,7 @@ def config_issue(path: Path) -> SetupIssue:
             "",
             "[dim]" + ("-" * 56) + "[/]",
             "",
-            "[bold]Getting your Telegram credentials:[/]",
+            "[bold]getting your telegram credentials:[/]",
             "",
             "   [cyan]bot_token[/]  create a bot with [link=https://t.me/BotFather]@BotFather[/]",
             "   [cyan]chat_id[/]    message [link=https://t.me/myidbot]@myidbot[/] to get your id",
@@ -47,11 +49,15 @@ def check_setup(backend: EngineBackend) -> SetupResult:
     issues: list[SetupIssue] = []
     config_path = HOME_CONFIG_PATH
     config: dict = {}
+    cmd = backend.cli_cmd or backend.id
+    backend_issues: list[SetupIssue] = []
+    if shutil.which(cmd) is None:
+        backend_issues.append(install_issue(cmd, backend.install_cmd))
 
     try:
         config, config_path = load_telegram_config()
     except ConfigError:
-        issues.extend(backend.check_setup({}, config_path))
+        issues.extend(backend_issues)
         issues.append(config_issue(config_path))
         return SetupResult(issues=issues, config_path=config_path)
 
@@ -61,7 +67,7 @@ def check_setup(backend: EngineBackend) -> SetupResult:
     missing_or_invalid_config = not (isinstance(token, str) and token.strip())
     missing_or_invalid_config |= type(chat_id) is not int
 
-    issues.extend(backend.check_setup(config, config_path))
+    issues.extend(backend_issues)
     if missing_or_invalid_config:
         issues.append(config_issue(config_path))
 
@@ -113,11 +119,7 @@ def render_engine_choice(backends: Sequence[EngineBackend]) -> None:
     parts.append("")
     for idx, backend in enumerate(backends, start=1):
         parts.append(f"[bold yellow]{idx}.[/] [dim]$[/] takopi {backend.id}")
-        if backend.id == "claude":
-            description = "use claude code"
-        else:
-            description = f"use {backend.display_name.lower()}"
-        parts.append(f"   [dim]{description}[/]")
+        parts.append(f"   [dim]use {backend.id}[/]")
         parts.append("")
 
     panel = Panel(

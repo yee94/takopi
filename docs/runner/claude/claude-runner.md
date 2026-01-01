@@ -94,15 +94,19 @@ Notes:
 
 ## Code changes (by file)
 
-### 1) `src/takopi/engines.py`
+### 1) New file: `src/takopi/runners/claude.py`
 
-Add a new backend:
+#### Backend export
 
-* Engine ID: `EngineId("claude")`
+Expose a module-level `BACKEND = EngineBackend(...)` (from `takopi.backends`).
+Takopi auto-discovers runners by importing `takopi.runners.*` and looking for
+`BACKEND`.
 
-* `check_setup()` should:
+`BACKEND` should provide:
 
-  * `shutil.which("claude")` must exist.
+* Engine id: `"claude"`
+* `install_cmd`:
+  * Install command for `claude` (used by onboarding when missing on PATH).
   * Error message should include official install options and “run `claude` once to authenticate”.
 
     * Install methods include install scripts, Homebrew, and npm. ([Claude Code][4])
@@ -110,11 +114,7 @@ Add a new backend:
 
 * `build_runner()` should parse `[claude]` config and instantiate `ClaudeRunner`.
 
-* `startup_message()` e.g.:
-
-  * `takopi (claude) is ready\npwd: ...`
-
-### 2) New file: `src/takopi/runners/claude.py`
+#### Runner implementation
 
 Implement a new `Runner`:
 
@@ -319,7 +319,7 @@ Mirror the existing `CodexRunner` tests patterns.
 
 1. **Contract & locking**
 
-* `test_run_serializes_same_session` (stub `_run` like Codex tests)
+* `test_run_serializes_same_session` (stub `run_impl` like Codex tests)
 * `test_run_allows_parallel_new_sessions`
 * `test_run_serializes_new_session_after_session_is_known`:
 
@@ -367,7 +367,7 @@ Mirror the existing `CodexRunner` tests patterns.
 
 ## Implementation checklist
 
-* [ ] Add `ClaudeBackend` in `src/takopi/engines.py` and register in `ENGINES`.
+* [ ] Export `BACKEND = EngineBackend(...)` from `src/takopi/runners/claude.py`.
 * [ ] Add `src/takopi/runners/claude.py` implementing the `Runner` protocol.
 * [ ] Add tests + stub executable fixtures.
 * [ ] Update README and developing docs.

@@ -7,7 +7,7 @@ from takopi import engines, onboarding
 
 def test_check_setup_marks_missing_codex(monkeypatch, tmp_path: Path) -> None:
     backend = engines.get_backend("codex")
-    monkeypatch.setattr(engines.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(onboarding.shutil, "which", lambda _name: None)
     monkeypatch.setattr(
         onboarding,
         "load_telegram_config",
@@ -17,14 +17,14 @@ def test_check_setup_marks_missing_codex(monkeypatch, tmp_path: Path) -> None:
     result = onboarding.check_setup(backend)
 
     titles = {issue.title for issue in result.issues}
-    assert "Install the Codex CLI" in titles
-    assert "Create a config" not in titles
+    assert "install codex" in titles
+    assert "create a config" not in titles
     assert result.ok is False
 
 
 def test_check_setup_marks_missing_config(monkeypatch) -> None:
     backend = engines.get_backend("codex")
-    monkeypatch.setattr(engines.shutil, "which", lambda _name: "/usr/bin/codex")
+    monkeypatch.setattr(onboarding.shutil, "which", lambda _name: "/usr/bin/codex")
 
     def _raise() -> None:
         raise onboarding.ConfigError("Missing config file")
@@ -34,13 +34,13 @@ def test_check_setup_marks_missing_config(monkeypatch) -> None:
     result = onboarding.check_setup(backend)
 
     titles = {issue.title for issue in result.issues}
-    assert "Create a config" in titles
+    assert "create a config" in titles
     assert result.config_path == onboarding.HOME_CONFIG_PATH
 
 
 def test_check_setup_marks_invalid_chat_id(monkeypatch, tmp_path: Path) -> None:
     backend = engines.get_backend("codex")
-    monkeypatch.setattr(engines.shutil, "which", lambda _name: "/usr/bin/codex")
+    monkeypatch.setattr(onboarding.shutil, "which", lambda _name: "/usr/bin/codex")
     monkeypatch.setattr(
         onboarding,
         "load_telegram_config",
@@ -50,4 +50,4 @@ def test_check_setup_marks_invalid_chat_id(monkeypatch, tmp_path: Path) -> None:
     result = onboarding.check_setup(backend)
 
     titles = {issue.title for issue in result.issues}
-    assert "Create a config" in titles
+    assert "create a config" in titles

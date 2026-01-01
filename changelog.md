@@ -1,5 +1,31 @@
 # changelog
 
+## unreleased
+
+### changes
+
+- add a claude code runner via the `claude` CLI with stream-json parsing and resume support
+- auto-discover engine backends and generate CLI subcommands from the registry
+- add `BaseRunner` session locking plus a `JsonlSubprocessRunner` helper for jsonl subprocess engines
+- add jsonl stream parsing and subprocess helpers for runners
+- lazily allocate per-session locks and streamline backend setup/install metadata
+- improve startup message formatting and markdown rendering
+- add a debug onboarding helper for setup troubleshooting
+
+### breaking
+
+- runner implementations must define explicit resume parsing/formatting (no implicit standard resume pattern)
+
+### fixes
+
+- stop leaking a hidden `engine-id` CLI option on engine subcommands
+
+### docs
+
+- add a runner guide plus Claude Code docs (runner, events, stream-json cheatsheet)
+- clarify the Claude runner file layout and add guidance for JSONL-based runners
+- document “minimal” runner mode: Started+Completed only, completed-only actions allowed
+
 ## v0.2.0 (2025-12-31)
 
 ### changes

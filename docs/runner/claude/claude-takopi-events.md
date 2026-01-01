@@ -44,8 +44,8 @@ Notes:
 `claude --resume <session_id>`
 ```
 
-Runner must implement its own regex (cannot use `compile_resume_pattern` because
-that only matches `<engine> resume <token>`). Suggested regex:
+Runner must implement its own regex because the resume format is
+`claude --resume <session_id>`. Suggested regex:
 
 ```
 (?im)^\s*`?claude\s+(?:--resume|-r)\s+(?P<token>[^`\s]+)`?\s*$
@@ -202,11 +202,9 @@ Add a Claude runner without changing the Takopi domain model:
 
 1. Create `takopi/runners/claude.py` implementing `Runner` and (custom)
    resume parsing.
-2. Update `takopi/engines.py`:
-   - add `claude` backend id
-   - `check_setup`: locate `claude` binary (PATH + common locations)
+2. Define `BACKEND` in `takopi/runners/claude.py`:
+   - `install_cmd`: install command for the `claude` binary
    - `build_runner`: read `[claude]` config + construct runner
-   - `startup_message`: `"claude is ready\npwd: <cwd>"`
 3. Add new docs (this file + `claude-stream-json-cheatsheet.md`).
 4. Add fixtures in `tests/fixtures/` (see below).
 5. Add unit tests mirroring `tests/test_codex_*` but for Claude translation
