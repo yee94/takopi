@@ -66,7 +66,7 @@ def test_translate_success_fixture() -> None:
     state = ClaudeStreamState()
     events: list = []
     for event in _load_fixture(
-        "claude_streamjson_session.jsonl",
+        "claude_stream_json_session.jsonl",
         session_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     ):
         events.extend(
@@ -115,7 +115,7 @@ def test_translate_error_fixture_permission_denials() -> None:
     state = ClaudeStreamState()
     events: list = []
     for event in _load_fixture(
-        "claude_streamjson_session.jsonl",
+        "claude_stream_json_session.jsonl",
         session_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
     ):
         events.extend(

@@ -32,7 +32,7 @@ def _decode_fixture(name: str) -> list[str]:
         "opencode_stream_success.jsonl",
         "opencode_stream_success_no_reason.jsonl",
         "opencode_stream_error.jsonl",
-        "opencode-run-json.fixture.jsonl",
+        "opencode_run_json.jsonl",
     ],
 )
 def test_opencode_schema_parses_fixture(fixture: str) -> None:

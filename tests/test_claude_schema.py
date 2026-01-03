@@ -32,7 +32,7 @@ def _decode_fixture(name: str) -> list[str]:
 @pytest.mark.parametrize(
     "fixture",
     [
-        "claude_streamjson_session.jsonl",
+        "claude_stream_json_session.jsonl",
     ],
 )
 def test_claude_schema_parses_fixture(fixture: str) -> None:
