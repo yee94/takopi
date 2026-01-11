@@ -7,23 +7,26 @@ import pytest
 
 from takopi import commands, plugins
 import takopi.telegram.bridge as bridge
+import takopi.telegram.loop as telegram_loop
+import takopi.telegram.commands as telegram_commands
+import takopi.telegram.topics as telegram_topics
 from takopi.directives import parse_directives
 from takopi.telegram.bridge import (
     TelegramBridgeConfig,
     TelegramFilesConfig,
     TelegramPresenter,
     TelegramTransport,
-    _build_bot_commands,
-    _handle_callback_cancel,
-    _handle_cancel,
-    _is_cancel_command,
-    _send_with_resume,
+    build_bot_commands,
+    handle_callback_cancel,
+    handle_cancel,
+    is_cancel_command,
+    send_with_resume,
     run_main_loop,
 )
 from takopi.telegram.client import BotClient
 from takopi.telegram.topic_state import TopicStateStore, resolve_state_path
 from takopi.context import RunContext
-from takopi.config import ProjectConfig, ProjectsConfig, empty_projects_config
+from takopi.config import ProjectConfig, ProjectsConfig
 from takopi.runner_bridge import ExecBridgeConfig, RunningTask
 from takopi.markdown import MarkdownPresenter
 from takopi.model import EngineId, ResumeToken
@@ -40,6 +43,10 @@ from takopi.transport import MessageRef, RenderedMessage, SendOptions
 from tests.plugin_fixtures import FakeEntryPoint, install_entrypoints
 
 CODEX_ENGINE = EngineId("codex")
+
+
+def _empty_projects() -> ProjectsConfig:
+    return ProjectsConfig(projects={}, default_project=None)
 
 
 def _make_router(runner) -> AutoRouter:
@@ -288,7 +295,7 @@ def _make_cfg(
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     return TelegramBridgeConfig(
         bot=_FakeBot(),
@@ -303,7 +310,7 @@ def test_parse_directives_inline_engine() -> None:
     directives = parse_directives(
         "/claude do it",
         engine_ids=("codex", "claude"),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     assert directives.engine == "claude"
     assert directives.prompt == "do it"
@@ -313,7 +320,7 @@ def test_parse_directives_newline() -> None:
     directives = parse_directives(
         "/codex\nhello",
         engine_ids=("codex", "claude"),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     assert directives.engine == "codex"
     assert directives.prompt == "hello"
@@ -323,7 +330,7 @@ def test_parse_directives_ignores_unknown() -> None:
     directives = parse_directives(
         "/unknown hi",
         engine_ids=("codex", "claude"),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     assert directives.engine is None
     assert directives.prompt == "/unknown hi"
@@ -333,7 +340,7 @@ def test_parse_directives_bot_suffix() -> None:
     directives = parse_directives(
         "/claude@bunny_agent_bot hi",
         engine_ids=("claude",),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     assert directives.engine == "claude"
     assert directives.prompt == "hi"
@@ -343,7 +350,7 @@ def test_parse_directives_only_first_non_empty_line() -> None:
     directives = parse_directives(
         "hello\n/claude hi",
         engine_ids=("codex", "claude"),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     assert directives.engine is None
     assert directives.prompt == "hello\n/claude hi"
@@ -355,9 +362,9 @@ def test_build_bot_commands_includes_cancel_and_engine() -> None:
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
-    commands = _build_bot_commands(runtime)
+    commands = build_bot_commands(runtime)
 
     assert {"command": "cancel", "description": "cancel run"} in commands
     assert {"command": "file", "description": "upload or fetch files"} in commands
@@ -386,7 +393,7 @@ def test_build_bot_commands_includes_projects() -> None:
     )
 
     runtime = TransportRuntime(router=router, projects=projects)
-    commands = _build_bot_commands(runtime)
+    commands = build_bot_commands(runtime)
 
     assert any(cmd["command"] == "good" for cmd in commands)
     assert not any(cmd["command"] == "bad-name" for cmd in commands)
@@ -413,10 +420,10 @@ def test_build_bot_commands_includes_command_plugins(monkeypatch) -> None:
     runner = ScriptRunner([Return(answer="ok")], engine=CODEX_ENGINE)
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
 
-    commands_list = _build_bot_commands(runtime)
+    commands_list = build_bot_commands(runtime)
 
     assert {"command": "pingcmd", "description": "ping command"} in commands_list
 
@@ -439,7 +446,7 @@ def test_build_bot_commands_caps_total() -> None:
     )
 
     runtime = TransportRuntime(router=router, projects=projects)
-    commands = _build_bot_commands(runtime)
+    commands = build_bot_commands(runtime)
 
     assert len(commands) == 100
     assert any(cmd["command"] == "codex" for cmd in commands)
@@ -667,7 +674,7 @@ async def test_handle_cancel_without_reply_prompts_user() -> None:
     )
     running_tasks: dict = {}
 
-    await _handle_cancel(cfg, msg, running_tasks)
+    await handle_cancel(cfg, msg, running_tasks)
 
     assert len(transport.send_calls) == 1
     assert "reply to the progress message" in transport.send_calls[0]["message"].text
@@ -688,7 +695,7 @@ async def test_handle_cancel_with_no_progress_message_says_nothing_running() -> 
     )
     running_tasks: dict = {}
 
-    await _handle_cancel(cfg, msg, running_tasks)
+    await handle_cancel(cfg, msg, running_tasks)
 
     assert len(transport.send_calls) == 1
     assert "nothing is currently running" in transport.send_calls[0]["message"].text
@@ -710,7 +717,7 @@ async def test_handle_cancel_with_finished_task_says_nothing_running() -> None:
     )
     running_tasks: dict = {}
 
-    await _handle_cancel(cfg, msg, running_tasks)
+    await handle_cancel(cfg, msg, running_tasks)
 
     assert len(transport.send_calls) == 1
     assert "nothing is currently running" in transport.send_calls[0]["message"].text
@@ -733,7 +740,7 @@ async def test_handle_cancel_cancels_running_task() -> None:
 
     running_task = RunningTask()
     running_tasks = {MessageRef(channel_id=123, message_id=progress_id): running_task}
-    await _handle_cancel(cfg, msg, running_tasks)
+    await handle_cancel(cfg, msg, running_tasks)
 
     assert running_task.cancel_requested.is_set() is True
     assert len(transport.send_calls) == 0  # No error message sent
@@ -759,7 +766,7 @@ async def test_handle_cancel_only_cancels_matching_progress_message() -> None:
         MessageRef(channel_id=123, message_id=2): task_second,
     }
 
-    await _handle_cancel(cfg, msg, running_tasks)
+    await handle_cancel(cfg, msg, running_tasks)
 
     assert task_first.cancel_requested.is_set() is True
     assert task_second.cancel_requested.is_set() is False
@@ -824,7 +831,9 @@ async def test_handle_file_put_writes_file(tmp_path: Path) -> None:
         ),
     )
 
-    await bridge._handle_file_put(cfg, msg, "/proj uploads/hello.txt", None, None)
+    await telegram_commands._handle_file_put(
+        cfg, msg, "/proj uploads/hello.txt", None, None
+    )
 
     target = tmp_path / "uploads" / "hello.txt"
     assert target.read_bytes() == payload
@@ -883,7 +892,7 @@ async def test_handle_file_get_sends_document_for_allowed_user(
         chat_type="supergroup",
     )
 
-    await bridge._handle_file_get(cfg, msg, "/proj hello.txt", None, None)
+    await telegram_commands._handle_file_get(cfg, msg, "/proj hello.txt", None, None)
 
     assert bot.document_calls
     assert bot.document_calls[0]["filename"] == "hello.txt"
@@ -906,7 +915,7 @@ async def test_handle_callback_cancel_cancels_running_task() -> None:
         sender_id=123,
     )
 
-    await _handle_callback_cancel(cfg, query, running_tasks)
+    await handle_callback_cancel(cfg, query, running_tasks)
 
     assert running_task.cancel_requested.is_set() is True
     assert len(transport.send_calls) == 0
@@ -928,7 +937,7 @@ async def test_handle_callback_cancel_without_task_acknowledges() -> None:
         sender_id=123,
     )
 
-    await _handle_callback_cancel(cfg, query, {})
+    await handle_callback_cancel(cfg, query, {})
 
     assert len(transport.send_calls) == 0
     bot = cast(_FakeBot, cfg.bot)
@@ -937,9 +946,9 @@ async def test_handle_callback_cancel_without_task_acknowledges() -> None:
 
 
 def test_cancel_command_accepts_extra_text() -> None:
-    assert _is_cancel_command("/cancel now") is True
-    assert _is_cancel_command("/cancel@takopi please") is True
-    assert _is_cancel_command("/cancelled") is False
+    assert is_cancel_command("/cancel now") is True
+    assert is_cancel_command("/cancel@takopi please") is True
+    assert is_cancel_command("/cancelled") is False
 
 
 def test_resolve_message_accepts_backticked_ctx_line() -> None:
@@ -971,24 +980,21 @@ def test_topic_title_matches_command_syntax() -> None:
     transport = _FakeTransport()
     cfg = _make_cfg(transport)
 
-    title = bridge._topic_title(
-        cfg=cfg,
+    title = telegram_topics._topic_title(
         runtime=cfg.runtime,
         context=RunContext(project="takopi", branch="master"),
     )
 
     assert title == "takopi @master"
 
-    title = bridge._topic_title(
-        cfg=cfg,
+    title = telegram_topics._topic_title(
         runtime=cfg.runtime,
         context=RunContext(project="takopi", branch=None),
     )
 
     assert title == "takopi"
 
-    title = bridge._topic_title(
-        cfg=cfg,
+    title = telegram_topics._topic_title(
         runtime=cfg.runtime,
         context=RunContext(project=None, branch="main"),
     )
@@ -1006,8 +1012,7 @@ def test_topic_title_projects_scope_includes_project() -> None:
         ),
     )
 
-    title = bridge._topic_title(
-        cfg=cfg,
+    title = telegram_topics._topic_title(
         runtime=cfg.runtime,
         context=RunContext(project="takopi", branch="master"),
     )
@@ -1028,7 +1033,7 @@ async def test_maybe_rename_topic_updates_title(tmp_path: Path) -> None:
         topic_title="takopi @old",
     )
 
-    await bridge._maybe_rename_topic(
+    await telegram_topics._maybe_rename_topic(
         cfg,
         store,
         chat_id=123,
@@ -1058,7 +1063,7 @@ async def test_maybe_rename_topic_skips_when_title_matches(tmp_path: Path) -> No
     )
     snapshot = await store.get_thread(123, 77)
 
-    await bridge._maybe_rename_topic(
+    await telegram_topics._maybe_rename_topic(
         cfg,
         store,
         chat_id=123,
@@ -1096,7 +1101,7 @@ async def test_send_with_resume_waits_for_token() -> None:
 
     async with anyio.create_task_group() as tg:
         tg.start_soon(trigger_resume)
-        await _send_with_resume(
+        await send_with_resume(
             cfg,
             enqueue,
             running_task,
@@ -1138,7 +1143,7 @@ async def test_send_with_resume_reports_when_missing() -> None:
     running_task = RunningTask()
     running_task.done.set()
 
-    await _send_with_resume(
+    await send_with_resume(
         cfg,
         enqueue,
         running_task,
@@ -1175,7 +1180,7 @@ async def test_run_main_loop_routes_reply_to_running_resume() -> None:
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     cfg = TelegramBridgeConfig(
         bot=bot,
@@ -1311,7 +1316,7 @@ async def test_run_main_loop_replies_in_same_thread() -> None:
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     cfg = TelegramBridgeConfig(
         bot=bot,
@@ -1489,7 +1494,7 @@ async def test_run_main_loop_handles_command_plugins(monkeypatch) -> None:
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     cfg = TelegramBridgeConfig(
         bot=bot,
@@ -1714,7 +1719,7 @@ async def test_run_main_loop_refreshes_command_ids(monkeypatch) -> None:
             return []
         return ["late_cmd"]
 
-    monkeypatch.setattr(bridge, "list_command_ids", _list_command_ids)
+    monkeypatch.setattr(telegram_loop, "list_command_ids", _list_command_ids)
 
     transport = _FakeTransport()
     bot = _FakeBot()
@@ -1726,7 +1731,7 @@ async def test_run_main_loop_refreshes_command_ids(monkeypatch) -> None:
     )
     runtime = TransportRuntime(
         router=_make_router(runner),
-        projects=empty_projects_config(),
+        projects=_empty_projects(),
     )
     cfg = TelegramBridgeConfig(
         bot=bot,

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Annotated, Any, Iterable, Literal
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    SecretStr,
     ValidationError,
-    field_serializer,
+    StringConstraints,
     field_validator,
     model_validator,
 )
+from pydantic.types import StrictInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources import TomlConfigSettingsSource
 
@@ -21,39 +21,52 @@ from .config import (
     HOME_CONFIG_PATH,
     ProjectConfig,
     ProjectsConfig,
-    _normalize_engine_id,
-    _normalize_project_path,
 )
 from .config_migrations import migrate_config_file
 
 
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+def _normalize_engine_id(
+    value: str,
+    *,
+    engine_ids: Iterable[str],
+    config_path: Path,
+    label: str,
+) -> str:
+    engine_map = {engine.lower(): engine for engine in engine_ids}
+    engine = engine_map.get(value.lower())
+    if engine is None:
+        available = ", ".join(sorted(engine_map.values()))
+        raise ConfigError(
+            f"Unknown `{label}` {value!r} in {config_path}. Available: {available}."
+        )
+    return engine
+
+
+def _normalize_project_path(value: str, *, config_path: Path) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = config_path.parent / path
+    return path
+
+
 class TelegramTopicsSettings(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     enabled: bool = False
-    scope: str = "auto"
-
-    @field_validator("scope", mode="before")
-    @classmethod
-    def _validate_scope(cls, value: Any) -> str:
-        if not isinstance(value, str):
-            raise ValueError("topics.scope must be a string")
-        cleaned = value.strip()
-        if cleaned not in {"auto", "main", "projects", "all"}:
-            raise ValueError(
-                "topics.scope must be 'auto', 'main', 'projects', or 'all'"
-            )
-        return cleaned
+    scope: Literal["auto", "main", "projects", "all"] = "auto"
 
 
 class TelegramFilesSettings(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     enabled: bool = False
     auto_put: bool = True
-    uploads_dir: str = "incoming"
-    allowed_user_ids: list[int] = Field(default_factory=list)
-    deny_globs: list[str] = Field(
+    uploads_dir: NonEmptyStr = "incoming"
+    allowed_user_ids: list[StrictInt] = Field(default_factory=list)
+    deny_globs: list[NonEmptyStr] = Field(
         default_factory=lambda: [
             ".git/**",
             ".env",
@@ -63,80 +76,22 @@ class TelegramFilesSettings(BaseModel):
         ]
     )
 
-    @field_validator("uploads_dir", mode="before")
+    @field_validator("uploads_dir")
     @classmethod
-    def _validate_uploads_dir(cls, value: Any) -> Any:
-        if value is None:
-            raise ValueError("files.uploads_dir must be a string")
-        if not isinstance(value, str):
-            raise ValueError("files.uploads_dir must be a string")
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("files.uploads_dir must be a non-empty string")
-        if Path(cleaned).is_absolute():
+    def _validate_uploads_dir(cls, value: str) -> str:
+        if Path(value).is_absolute():
             raise ValueError("files.uploads_dir must be a relative path")
-        return cleaned
-
-    @field_validator("allowed_user_ids", mode="before")
-    @classmethod
-    def _validate_allowed_users(cls, value: Any) -> Any:
-        if value is None:
-            return []
-        if not isinstance(value, list):
-            raise ValueError("files.allowed_user_ids must be a list of integers")
-        for item in value:
-            if isinstance(item, bool) or not isinstance(item, int):
-                raise ValueError("files.allowed_user_ids must be a list of integers")
         return value
-
-    @field_validator("deny_globs", mode="before")
-    @classmethod
-    def _validate_deny_globs(cls, value: Any) -> Any:
-        if value is None:
-            return []
-        if not isinstance(value, list):
-            raise ValueError("files.deny_globs must be a list of strings")
-        cleaned: list[str] = []
-        for item in value:
-            if not isinstance(item, str):
-                raise ValueError("files.deny_globs must be a list of strings")
-            stripped = item.strip()
-            if not stripped:
-                raise ValueError("files.deny_globs entries must be non-empty strings")
-            cleaned.append(stripped)
-        return cleaned
 
 
 class TelegramTransportSettings(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    bot_token: SecretStr | None = None
-    chat_id: int | None = None
+    bot_token: NonEmptyStr
+    chat_id: StrictInt
     voice_transcription: bool = False
     topics: TelegramTopicsSettings = Field(default_factory=TelegramTopicsSettings)
     files: TelegramFilesSettings = Field(default_factory=TelegramFilesSettings)
-
-    @field_validator("bot_token", mode="before")
-    @classmethod
-    def _validate_bot_token(cls, value: Any) -> Any:
-        if value is None:
-            return None
-        if not isinstance(value, str):
-            raise ValueError("bot_token must be a string")
-        return value
-
-    @field_validator("chat_id", mode="before")
-    @classmethod
-    def _validate_chat_id(cls, value: Any) -> Any:
-        if value is None:
-            return None
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise ValueError("chat_id must be an integer")
-        return value
-
-    @field_serializer("bot_token")
-    def _dump_token(self, value: SecretStr | None) -> str | None:
-        return value.get_secret_value() if value else None
 
 
 class TransportsSettings(BaseModel):
@@ -148,47 +103,19 @@ class TransportsSettings(BaseModel):
 
 
 class PluginsSettings(BaseModel):
-    enabled: list[str] = Field(default_factory=list)
-    auto_install: bool = False
+    enabled: list[NonEmptyStr] = Field(default_factory=list)
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
 
 
 class ProjectSettings(BaseModel):
-    path: str
-    worktrees_dir: str = ".worktrees"
-    default_engine: str | None = None
-    worktree_base: str | None = None
-    chat_id: int | None = None
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    model_config = ConfigDict(extra="allow")
-
-    @field_validator(
-        "path",
-        "worktrees_dir",
-        "default_engine",
-        "worktree_base",
-        mode="before",
-    )
-    @classmethod
-    def _validate_strings(cls, value: Any, info) -> Any:
-        if value is None:
-            return None
-        if not isinstance(value, str):
-            raise ValueError(f"{info.field_name} must be a string")
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError(f"{info.field_name} must be a non-empty string")
-        return cleaned
-
-    @field_validator("chat_id", mode="before")
-    @classmethod
-    def _validate_chat_id(cls, value: Any) -> Any:
-        if value is None:
-            return None
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise ValueError("chat_id must be an integer")
-        return value
+    path: NonEmptyStr
+    worktrees_dir: NonEmptyStr = ".worktrees"
+    default_engine: NonEmptyStr | None = None
+    worktree_base: NonEmptyStr | None = None
+    chat_id: StrictInt | None = None
 
 
 class TakopiSettings(BaseSettings):
@@ -196,14 +123,15 @@ class TakopiSettings(BaseSettings):
         extra="allow",
         env_prefix="TAKOPI__",
         env_nested_delimiter="__",
+        str_strip_whitespace=True,
     )
 
     watch_config: bool = False
-    default_engine: str = "codex"
-    default_project: str | None = None
+    default_engine: NonEmptyStr = "codex"
+    default_project: NonEmptyStr | None = None
     projects: dict[str, ProjectSettings] = Field(default_factory=dict)
 
-    transport: str = "telegram"
+    transport: NonEmptyStr = "telegram"
     transports: TransportsSettings = Field(default_factory=TransportsSettings)
 
     plugins: PluginsSettings = Field(default_factory=PluginsSettings)
@@ -217,30 +145,6 @@ class TakopiSettings(BaseSettings):
                 'and set transport = "telegram".'
             )
         return data
-
-    @field_validator("default_engine", "transport", mode="before")
-    @classmethod
-    def _validate_required_strings(cls, value: Any, info) -> Any:
-        if value is None:
-            raise ValueError(f"{info.field_name} must be a non-empty string")
-        if not isinstance(value, str):
-            raise ValueError(f"{info.field_name} must be a string")
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError(f"{info.field_name} must be a non-empty string")
-        return cleaned
-
-    @field_validator("default_project", mode="before")
-    @classmethod
-    def _validate_default_project(cls, value: Any) -> Any:
-        if value is None:
-            return None
-        if not isinstance(value, str):
-            raise ValueError("default_project must be a string")
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("default_project must be a non-empty string")
-        return cleaned
 
     @classmethod
     def settings_customise_sources(
@@ -302,11 +206,7 @@ class TakopiSettings(BaseSettings):
         chat_map: dict[int, str] = {}
 
         for raw_alias, entry in self.projects.items():
-            if not isinstance(raw_alias, str) or not raw_alias.strip():
-                raise ConfigError(
-                    f"Invalid project alias in {config_path}; expected a non-empty string."
-                )
-            alias = raw_alias.strip()
+            alias = raw_alias
             alias_key = alias.lower()
             if alias_key in engine_map or alias_key in reserved_lower:
                 raise ConfigError(
@@ -318,56 +218,24 @@ class TakopiSettings(BaseSettings):
                     f"Duplicate project alias {alias!r} in {config_path}."
                 )
 
-            path_value = entry.path
-            if not isinstance(path_value, str) or not path_value.strip():
-                raise ConfigError(
-                    f"Missing `path` for project {alias!r} in {config_path}."
-                )
-            path = _normalize_project_path(path_value.strip(), config_path=config_path)
+            path = _normalize_project_path(entry.path, config_path=config_path)
 
-            worktrees_dir_raw = entry.worktrees_dir
-            if not isinstance(worktrees_dir_raw, str) or not worktrees_dir_raw.strip():
-                raise ConfigError(
-                    f"Invalid `worktrees_dir` for project {alias!r} in {config_path}."
-                )
-            worktrees_dir = Path(worktrees_dir_raw.strip()).expanduser()
+            worktrees_dir = Path(entry.worktrees_dir).expanduser()
 
-            default_engine_raw = entry.default_engine
             default_engine = None
-            if default_engine_raw is not None:
-                if not isinstance(default_engine_raw, str):
-                    raise ConfigError(
-                        f"Invalid `projects.{alias}.default_engine` in {config_path}; "
-                        "expected a string."
-                    )
+            if entry.default_engine is not None:
                 default_engine = _normalize_engine_id(
-                    default_engine_raw,
+                    entry.default_engine,
                     engine_ids=engine_ids,
                     config_path=config_path,
                     label=f"projects.{alias}.default_engine",
                 )
 
-            worktree_base_raw = entry.worktree_base
-            worktree_base = None
-            if worktree_base_raw is not None:
-                if (
-                    not isinstance(worktree_base_raw, str)
-                    or not worktree_base_raw.strip()
-                ):
-                    raise ConfigError(
-                        f"Invalid `projects.{alias}.worktree_base` in {config_path}; "
-                        "expected a string."
-                    )
-                worktree_base = worktree_base_raw.strip()
+            worktree_base = entry.worktree_base
 
             chat_id = entry.chat_id
             if chat_id is not None:
-                if isinstance(chat_id, bool) or not isinstance(chat_id, int):
-                    raise ConfigError(
-                        f"Invalid `projects.{alias}.chat_id` in {config_path}; "
-                        "expected an integer."
-                    )
-                if default_chat_id is not None and chat_id == default_chat_id:
+                if chat_id == default_chat_id:
                     raise ConfigError(
                         f"Invalid `projects.{alias}.chat_id` in {config_path}; "
                         "must not match transports.telegram.chat_id."
@@ -442,27 +310,9 @@ def require_telegram(settings: TakopiSettings, config_path: Path) -> tuple[str, 
             "(telegram only for now)."
         )
     tg = settings.transports.telegram
-    if tg.bot_token is None or not tg.bot_token.get_secret_value().strip():
+    if not tg.bot_token:
         raise ConfigError(f"Missing bot token in {config_path}.")
-    if tg.chat_id is None:
-        raise ConfigError(f"Missing chat_id in {config_path}.")
-    if isinstance(tg.chat_id, bool) or not isinstance(tg.chat_id, int):
-        raise ConfigError(f"Invalid `chat_id` in {config_path}; expected an integer.")
-    return tg.bot_token.get_secret_value().strip(), tg.chat_id
-
-
-def require_telegram_config(
-    config: dict[str, object], config_path: Path
-) -> tuple[str, int]:
-    raw_token = config.get("bot_token")
-    if raw_token is None or not isinstance(raw_token, str) or not raw_token.strip():
-        raise ConfigError(f"Missing bot token in {config_path}.")
-    raw_chat_id = config.get("chat_id")
-    if raw_chat_id is None:
-        raise ConfigError(f"Missing chat_id in {config_path}.")
-    if isinstance(raw_chat_id, bool) or not isinstance(raw_chat_id, int):
-        raise ConfigError(f"Invalid `chat_id` in {config_path}; expected an integer.")
-    return raw_token.strip(), raw_chat_id
+    return tg.bot_token, tg.chat_id
 
 
 def _resolve_config_path(path: str | Path | None) -> Path:

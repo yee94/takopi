@@ -8,6 +8,22 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 
+__all__ = [
+    "ZipTooLargeError",
+    "default_upload_name",
+    "default_upload_path",
+    "deny_reason",
+    "file_usage",
+    "format_bytes",
+    "normalize_relative_path",
+    "parse_file_command",
+    "parse_file_prompt",
+    "resolve_path_within_root",
+    "split_command_args",
+    "write_bytes_atomic",
+    "zip_directory",
+]
+
 
 def split_command_args(text: str) -> tuple[str, ...]:
     if not text.strip():
@@ -20,14 +36,6 @@ def split_command_args(text: str) -> tuple[str, ...]:
 
 def file_usage() -> str:
     return "usage: `/file put <path>` or `/file get <path>`"
-
-
-def file_put_usage() -> str:
-    return "usage: `/file put <path>`"
-
-
-def file_get_usage() -> str:
-    return "usage: `/file get <path>`"
 
 
 def parse_file_command(args_text: str) -> tuple[str | None, str, str | None]:

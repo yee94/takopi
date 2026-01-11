@@ -3,28 +3,24 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .config import ConfigError
-from .config_store import read_raw_toml, write_raw_toml
+from .config import ConfigError, ensure_table, read_config, write_config
 from .logging import get_logger
 
 logger = get_logger(__name__)
 
 
-def _ensure_table(
-    config: dict[str, Any],
+def _ensure_subtable(
+    parent: dict[str, Any],
     key: str,
     *,
     config_path: Path,
-    label: str | None = None,
-) -> dict[str, Any]:
-    value = config.get(key)
+    label: str,
+) -> dict[str, Any] | None:
+    value = parent.get(key)
     if value is None:
-        table: dict[str, Any] = {}
-        config[key] = table
-        return table
+        return None
     if not isinstance(value, dict):
-        name = label or key
-        raise ConfigError(f"Invalid `{name}` in {config_path}; expected a table.")
+        raise ConfigError(f"Invalid `{label}` in {config_path}; expected a table.")
     return value
 
 
@@ -33,15 +29,13 @@ def _migrate_legacy_telegram(config: dict[str, Any], *, config_path: Path) -> bo
     if not has_legacy:
         return False
 
-    transports = _ensure_table(config, "transports", config_path=config_path)
-    telegram = transports.get("telegram")
-    if telegram is None:
-        telegram = {}
-        transports["telegram"] = telegram
-    if not isinstance(telegram, dict):
-        raise ConfigError(
-            f"Invalid `transports.telegram` in {config_path}; expected a table."
-        )
+    transports = ensure_table(config, "transports", config_path=config_path)
+    telegram = ensure_table(
+        transports,
+        "telegram",
+        config_path=config_path,
+        label="transports.telegram",
+    )
 
     if "bot_token" in config and "bot_token" not in telegram:
         telegram["bot_token"] = config["bot_token"]
@@ -55,27 +49,32 @@ def _migrate_legacy_telegram(config: dict[str, Any], *, config_path: Path) -> bo
 
 
 def _migrate_topics_scope(config: dict[str, Any], *, config_path: Path) -> bool:
-    transports = config.get("transports")
+    transports = _ensure_subtable(
+        config,
+        "transports",
+        config_path=config_path,
+        label="transports",
+    )
     if transports is None:
         return False
-    if not isinstance(transports, dict):
-        raise ConfigError(f"Invalid `transports` in {config_path}; expected a table.")
 
-    telegram = transports.get("telegram")
+    telegram = _ensure_subtable(
+        transports,
+        "telegram",
+        config_path=config_path,
+        label="transports.telegram",
+    )
     if telegram is None:
         return False
-    if not isinstance(telegram, dict):
-        raise ConfigError(
-            f"Invalid `transports.telegram` in {config_path}; expected a table."
-        )
 
-    topics = telegram.get("topics")
+    topics = _ensure_subtable(
+        telegram,
+        "topics",
+        config_path=config_path,
+        label="transports.telegram.topics",
+    )
     if topics is None:
         return False
-    if not isinstance(topics, dict):
-        raise ConfigError(
-            f"Invalid `transports.telegram.topics` in {config_path}; expected a table."
-        )
     if "mode" not in topics:
         return False
 
@@ -112,10 +111,10 @@ def migrate_config(config: dict[str, Any], *, config_path: Path) -> list[str]:
 
 
 def migrate_config_file(path: Path) -> list[str]:
-    config = read_raw_toml(path)
+    config = read_config(path)
     applied = migrate_config(config, config_path=path)
     if applied:
-        write_raw_toml(config, path)
+        write_config(config, path)
         for migration in applied:
             logger.info(
                 "config.migrated",

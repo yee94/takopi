@@ -22,13 +22,27 @@ from rich.table import Table
 
 from ..backends import EngineBackend, SetupIssue
 from ..backends_helpers import install_issue
-from ..config import ConfigError
-from ..config_store import read_raw_toml, write_raw_toml
+from ..config import (
+    ConfigError,
+    dump_toml,
+    ensure_table,
+    read_config,
+    write_config,
+)
 from ..engines import list_backends
 from ..logging import suppress_logs
 from ..settings import HOME_CONFIG_PATH, load_settings, require_telegram
 from ..transports import SetupResult
 from .client import TelegramClient, TelegramRetryAfter
+
+__all__ = [
+    "ChatInfo",
+    "check_setup",
+    "interactive_setup",
+    "mask_token",
+    "get_bot_info",
+    "wait_for_chat",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,49 +124,14 @@ def check_setup(
     return SetupResult(issues=issues, config_path=config_path)
 
 
-def _mask_token(token: str) -> str:
+def mask_token(token: str) -> str:
     token = token.strip()
     if len(token) <= 12:
         return "*" * len(token)
     return f"{token[:9]}...{token[-5:]}"
 
 
-def _toml_escape(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _render_config(token: str, chat_id: int, default_engine: str | None) -> str:
-    lines: list[str] = []
-    if default_engine:
-        lines.append(f'default_engine = "{_toml_escape(default_engine)}"')
-        lines.append("")
-    lines.append('transport = "telegram"')
-    lines.append("")
-    lines.append("[transports.telegram]")
-    lines.append(f'bot_token = "{_toml_escape(token)}"')
-    lines.append(f"chat_id = {chat_id}")
-    return "\n".join(lines) + "\n"
-
-
-def _ensure_table(
-    config: dict[str, Any],
-    key: str,
-    *,
-    config_path: Path,
-    label: str | None = None,
-) -> dict[str, Any]:
-    value = config.get(key)
-    if value is None:
-        table: dict[str, Any] = {}
-        config[key] = table
-        return table
-    if not isinstance(value, dict):
-        name = label or key
-        raise ConfigError(f"Invalid `{name}` in {config_path}; expected a table.")
-    return value
-
-
-async def _get_bot_info(token: str) -> dict[str, Any] | None:
+async def get_bot_info(token: str) -> dict[str, Any] | None:
     bot = TelegramClient(token)
     try:
         for _ in range(3):
@@ -165,7 +144,7 @@ async def _get_bot_info(token: str) -> dict[str, Any] | None:
         await bot.close()
 
 
-async def _wait_for_chat(token: str) -> ChatInfo:
+async def wait_for_chat(token: str) -> ChatInfo:
     bot = TelegramClient(token)
     try:
         offset: int | None = None
@@ -329,7 +308,7 @@ def _prompt_token(console: Console) -> tuple[str, dict[str, Any]] | None:
             console.print("  token cannot be empty")
             continue
         console.print("  validating...")
-        info = anyio.run(_get_bot_info, token)
+        info = anyio.run(get_bot_info, token)
         if info:
             username = info.get("username")
             if isinstance(username, str) and username:
@@ -353,7 +332,7 @@ def capture_chat_id(*, token: str | None = None) -> ChatInfo | None:
                 console.print("  token cannot be empty")
                 return None
             console.print("  validating...")
-            info = anyio.run(_get_bot_info, token)
+            info = anyio.run(get_bot_info, token)
             if not info:
                 console.print("  failed to connect, check the token and try again")
                 return None
@@ -368,7 +347,7 @@ def capture_chat_id(*, token: str | None = None) -> ChatInfo | None:
         console.print(f"  send /start to {bot_ref} (works in groups too)")
         console.print("  waiting...")
         try:
-            chat = anyio.run(_wait_for_chat, token)
+            chat = anyio.run(wait_for_chat, token)
         except KeyboardInterrupt:
             console.print("  cancelled")
             return None
@@ -428,7 +407,7 @@ def interactive_setup(*, force: bool) -> bool:
         console.print(f"  send /start to {bot_ref} (works in groups too)")
         console.print("  waiting...")
         try:
-            chat = anyio.run(_wait_for_chat, token)
+            chat = anyio.run(wait_for_chat, token)
         except KeyboardInterrupt:
             console.print("  cancelled")
             return False
@@ -461,11 +440,17 @@ def interactive_setup(*, force: bool) -> bool:
             if not save_anyway:
                 return False
 
-        config_preview = _render_config(
-            _mask_token(token),
-            chat.chat_id,
-            default_engine,
-        ).rstrip()
+        preview_config: dict[str, Any] = {}
+        if default_engine is not None:
+            preview_config["default_engine"] = default_engine
+        preview_config["transport"] = "telegram"
+        preview_config["transports"] = {
+            "telegram": {
+                "bot_token": mask_token(token),
+                "chat_id": chat.chat_id,
+            }
+        }
+        config_preview = dump_toml(preview_config).rstrip()
         console.print("\nstep 3: save configuration\n")
         console.print(f"  {_display_path(config_path)}\n")
         for line in config_preview.splitlines():
@@ -482,7 +467,7 @@ def interactive_setup(*, force: bool) -> bool:
         raw_config: dict[str, Any] = {}
         if config_path.exists():
             try:
-                raw_config = read_raw_toml(config_path)
+                raw_config = read_config(config_path)
             except ConfigError as exc:
                 console.print(f"[yellow]warning:[/] config is malformed: {exc}")
                 backup = config_path.with_suffix(".toml.bak")
@@ -499,8 +484,8 @@ def interactive_setup(*, force: bool) -> bool:
         if default_engine is not None:
             merged["default_engine"] = default_engine
         merged["transport"] = "telegram"
-        transports = _ensure_table(merged, "transports", config_path=config_path)
-        telegram = _ensure_table(
+        transports = ensure_table(merged, "transports", config_path=config_path)
+        telegram = ensure_table(
             transports,
             "telegram",
             config_path=config_path,
@@ -510,7 +495,7 @@ def interactive_setup(*, force: bool) -> bool:
         telegram["chat_id"] = chat.chat_id
         merged.pop("bot_token", None)
         merged.pop("chat_id", None)
-        write_raw_toml(merged, config_path)
+        write_config(merged, config_path)
         console.print(f"  config saved to {_display_path(config_path)}")
 
         done_panel = Panel(

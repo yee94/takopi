@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from takopi.config import ConfigError
-from takopi.config_store import read_raw_toml
+from takopi.config import ConfigError, read_config
 from takopi.settings import (
     TakopiSettings,
     load_settings,
@@ -38,8 +37,7 @@ def test_load_settings_from_toml(tmp_path: Path) -> None:
     assert token == "token"
     assert chat_id == 123
 
-    dumped = settings.model_dump()
-    assert dumped["transports"]["telegram"]["bot_token"] == "token"
+    assert settings.transports.telegram.bot_token == "token"
 
 
 def test_env_overrides_toml(tmp_path: Path, monkeypatch) -> None:
@@ -67,7 +65,7 @@ def test_legacy_keys_migrated(tmp_path: Path) -> None:
 
     assert loaded_path == config_path
     assert settings.transports.telegram.chat_id == 123
-    raw = read_raw_toml(config_path)
+    raw = read_config(config_path)
     assert "bot_token" not in raw
     assert "chat_id" not in raw
     assert raw["transports"]["telegram"]["bot_token"] == "token"
@@ -100,7 +98,10 @@ def test_validate_settings_data_rejects_empty_default_engine(tmp_path: Path) -> 
 
 def test_validate_settings_data_rejects_empty_default_project(tmp_path: Path) -> None:
     config_path = tmp_path / "takopi.toml"
-    data = {"default_project": "   "}
+    data = {
+        "default_project": "   ",
+        "transports": {"telegram": {"bot_token": "token", "chat_id": 123}},
+    }
 
     with pytest.raises(ConfigError, match="default_project"):
         validate_settings_data(data, config_path=config_path)
@@ -108,7 +109,10 @@ def test_validate_settings_data_rejects_empty_default_project(tmp_path: Path) ->
 
 def test_validate_settings_data_rejects_empty_project_path(tmp_path: Path) -> None:
     config_path = tmp_path / "takopi.toml"
-    data = {"projects": {"z80": {"path": "   "}}}
+    data = {
+        "projects": {"z80": {"path": "   "}},
+        "transports": {"telegram": {"bot_token": "token", "chat_id": 123}},
+    }
 
     with pytest.raises(ConfigError, match="path"):
         validate_settings_data(data, config_path=config_path)
@@ -172,14 +176,14 @@ def test_transport_config_telegram_and_extra(tmp_path: Path) -> None:
         settings.transport_config("discord", config_path=config_path)
 
 
-def test_bot_token_none_allowed() -> None:
-    settings = TakopiSettings.model_validate(
-        {
-            "transport": "telegram",
-            "transports": {"telegram": {"bot_token": None, "chat_id": 123}},
-        }
-    )
-    assert settings.transports.telegram.bot_token is None
+def test_bot_token_none_rejected(tmp_path: Path) -> None:
+    config_path = tmp_path / "takopi.toml"
+    data = {
+        "transport": "telegram",
+        "transports": {"telegram": {"bot_token": None, "chat_id": 123}},
+    }
+    with pytest.raises(ConfigError, match="bot_token"):
+        validate_settings_data(data, config_path=config_path)
 
 
 def test_require_telegram_rejects_non_telegram_transport(tmp_path: Path) -> None:

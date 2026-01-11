@@ -138,7 +138,7 @@ classDiagram
     ActionEvent --> Action
     CompletedEvent --> ResumeToken
 
-    note for Action "ActionKind: command | tool | file_change |\nweb_search | subagent | note | turn | warning"
+    note for Action "ActionKind: command | tool | file_change |\nweb_search | subagent | note | turn | warning | telemetry"
 ```
 
 ---
@@ -202,9 +202,9 @@ flowchart TD
 
     C --> D{Engine?}
     D -->|Claude| D1["claude --print --output-format stream-json<br/>[--resume id] prompt"]
-    D -->|Codex| D2["codex exec --output jsonl<br/>[--reconnect id] prompt"]
-    D -->|Pi| D3["pi --output jsonl<br/>[--session id] prompt"]
-    D -->|OpenCode| D4["opencode --output jsonl<br/>[--session id] prompt"]
+    D -->|Codex| D2["codex exec --json<br/>[resume &lt;token&gt;] -"]
+    D -->|Pi| D3["pi --print --mode json<br/>--session &lt;id&gt; &lt;prompt&gt;"]
+    D -->|OpenCode| D4["opencode run --format json<br/>[--session id] -- &lt;prompt&gt;"]
 
     D1 --> E[Spawn Subprocess<br/>anyio.open_process]
     D2 --> E
@@ -320,14 +320,14 @@ flowchart TD
 flowchart LR
     subgraph Config["~/.takopi/"]
         toml[takopi.toml]
-        lock[.takopi.lock]
+        lock[takopi.lock]
     end
 
     subgraph toml_contents["takopi.toml"]
         direction TB
         global["transport<br/>default_engine<br/>default_project"]
         telegram_cfg["[transports.telegram]<br/>bot_token = ...<br/>chat_id = ..."]
-        plugins_cfg["[plugins]<br/>enabled = [\"...\"]"]
+        plugins_cfg["[plugins]<br/>enabled = [...]"]
         plugins_extra["[plugins.mycommand]<br/>setting = ..."]
         claude_cfg["[claude]<br/>model = ..."]
         codex_cfg["[codex]<br/>model = ..."]
