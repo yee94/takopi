@@ -14,6 +14,7 @@ from ..events import EventFactory
 from ..logging import get_logger
 from ..model import Action, ActionKind, EngineId, ResumeToken, TakopiEvent
 from ..runner import JsonlSubprocessRunner, ResumeTokenMixin, Runner
+from .run_options import get_run_options
 from ..schemas import claude as claude_schema
 from .tool_actions import tool_input_path, tool_kind_and_title
 
@@ -296,11 +297,15 @@ class ClaudeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
         return f"`claude --resume {token.value}`"
 
     def _build_args(self, prompt: str, resume: ResumeToken | None) -> list[str]:
+        run_options = get_run_options()
         args: list[str] = ["-p", "--output-format", "stream-json", "--verbose"]
         if resume is not None:
             args.extend(["--resume", resume.value])
-        if self.model is not None:
-            args.extend(["--model", str(self.model)])
+        model = self.model
+        if run_options is not None and run_options.model:
+            model = run_options.model
+        if model is not None:
+            args.extend(["--model", str(model)])
         allowed_tools = _coerce_comma_list(self.allowed_tools)
         if allowed_tools is not None:
             args.extend(["--allowedTools", allowed_tools])
