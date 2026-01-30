@@ -99,6 +99,7 @@ async def _resolve_engine_run_options(
     engine: EngineId,
     chat_prefs: ChatPrefsStore | None,
     topic_store: TopicStateStore | None,
+    system_prompt: str | None = None,
 ) -> EngineRunOptions | None:
     topic_override = None
     if topic_store is not None and thread_id is not None:
@@ -109,9 +110,13 @@ async def _resolve_engine_run_options(
     if chat_prefs is not None:
         chat_override = await chat_prefs.get_engine_override(chat_id, engine)
     merged = merge_overrides(topic_override, chat_override)
-    if merged is None:
+    if merged is None and system_prompt is None:
         return None
-    return EngineRunOptions(model=merged.model, reasoning=merged.reasoning)
+    return EngineRunOptions(
+        model=merged.model if merged else None,
+        reasoning=merged.reasoning if merged else None,
+        system=system_prompt,
+    )
 
 
 def _allowed_chat_ids(cfg: TelegramBridgeConfig) -> set[int]:
@@ -1132,6 +1137,7 @@ async def run_main_loop(
                     engine_for_overrides,
                     chat_prefs=state.chat_prefs,
                     topic_store=state.topic_store,
+                    system_prompt=cfg.runtime.resolve_system_prompt(context),
                 )
                 await run_engine(
                     exec_cfg=cfg.exec_cfg,

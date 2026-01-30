@@ -285,6 +285,10 @@ class TransportRuntime:
             return None
         return RunContext(project=project_key, branch=None)
 
+    def resolve_system_prompt(self, context: RunContext | None) -> str | None:
+        project_key = context.project if context is not None else None
+        return self._projects.resolve_system_prompt(project_key)
+
     def project_chat_ids(self) -> tuple[int, ...]:
         return self._projects.project_chat_ids()
 

@@ -125,22 +125,36 @@ def init(
     )
 
 
-def topic(
+def topic_init(
     project: str | None = typer.Argument(
         None, help="Project alias (defaults to current directory name)."
     ),
     branch: str | None = typer.Option(
         None, "--branch", "-b", help="Branch name (defaults to current git branch)."
     ),
-    delete: bool = typer.Option(
-        False, "--delete", "-d", help="Delete topic binding instead of creating."
-    ),
 ) -> None:
-    """Create or delete a Telegram topic bound to a project/branch."""
+    """Create a Telegram topic bound to a project/branch."""
     run_topic(
         project=project,
         branch=branch,
-        delete=delete,
+        delete=False,
+        config_path=None,
+    )
+
+
+def topic_delete(
+    project: str | None = typer.Argument(
+        None, help="Project alias (defaults to current directory name)."
+    ),
+    branch: str | None = typer.Option(
+        None, "--branch", "-b", help="Branch name (defaults to current git branch)."
+    ),
+) -> None:
+    """Delete a Telegram topic binding."""
+    run_topic(
+        project=project,
+        branch=branch,
+        delete=True,
         config_path=None,
     )
 
@@ -188,8 +202,11 @@ def create_app() -> typer.Typer:
     config_app.command(name="get")(config_get)
     config_app.command(name="set")(config_set)
     config_app.command(name="unset")(config_unset)
+    topic_app = typer.Typer(help="Manage Telegram topics.")
+    topic_app.command(name="init")(topic_init)
+    topic_app.command(name="delete")(topic_delete)
     app.command(name="init")(init)
-    app.command(name="topic")(topic)
+    app.add_typer(topic_app, name="topic")
     app.command(name="chat-id")(chat_id)
     app.command(name="doctor")(doctor)
     app.command(name="onboarding-paths")(onboarding_paths)

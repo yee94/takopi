@@ -10,6 +10,7 @@ from dataclasses import dataclass
 class EngineRunOptions:
     model: str | None = None
     reasoning: str | None = None
+    system: str | None = None
 
 
 _RUN_OPTIONS: ContextVar[EngineRunOptions | None] = ContextVar(

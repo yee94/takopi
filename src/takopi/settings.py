@@ -129,6 +129,7 @@ class ProjectSettings(BaseModel):
     default_engine: NonEmptyStr | None = None
     worktree_base: NonEmptyStr | None = None
     chat_id: StrictInt | None = None
+    system_prompt: str | None = None
 
 
 class TakopiSettings(BaseSettings):
@@ -142,6 +143,10 @@ class TakopiSettings(BaseSettings):
     watch_config: bool = False
     default_engine: NonEmptyStr = "codex"
     default_project: NonEmptyStr | None = None
+    system_prompt: str | None = (
+        "你是我的专业秘书，请用中文回复。"
+        "每次会话结束以后，都请叫我老板，用简短、调皮的职场回复，告诉我你的任务结果！"
+    )
     projects: dict[str, ProjectSettings] = Field(default_factory=dict)
 
     transport: NonEmptyStr = "telegram"
@@ -268,6 +273,7 @@ class TakopiSettings(BaseSettings):
                 default_engine=default_engine,
                 worktree_base=worktree_base,
                 chat_id=chat_id,
+                system_prompt=entry.system_prompt,
             )
 
         if default_project is not None:
@@ -282,6 +288,7 @@ class TakopiSettings(BaseSettings):
         return ProjectsConfig(
             projects=projects,
             default_project=default_project,
+            global_system_prompt=self.system_prompt,
             chat_map=chat_map,
         )
 

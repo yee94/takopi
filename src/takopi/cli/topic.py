@@ -9,6 +9,8 @@ import typer
 
 from ..config import ConfigError, HOME_CONFIG_PATH, load_or_init_config, write_config
 from ..config_migrations import migrate_config
+from ..engines import list_backend_ids
+from ..ids import RESERVED_CHAT_COMMANDS, RESERVED_CLI_COMMANDS
 from ..settings import load_settings, validate_settings_data
 from ..telegram.client import TelegramClient
 from ..telegram.topic_state import TopicStateStore, resolve_state_path
@@ -69,12 +71,27 @@ def _get_project_root(cwd: Path) -> Path:
     return cwd
 
 
+def _check_alias_conflict(alias: str) -> str | None:
+    """Check if project alias conflicts with engine IDs or reserved commands.
+    
+    Returns conflict reason if conflicts, None otherwise.
+    """
+    reserved = RESERVED_CLI_COMMANDS | RESERVED_CHAT_COMMANDS
+    engine_ids = set(list_backend_ids())
+    
+    alias_lower = alias.lower()
+    if alias_lower in engine_ids:
+        return f"engine ID '{alias_lower}'"
+    if alias_lower in reserved:
+        return f"reserved command '{alias_lower}'"
+    return None
+
+
 def _generate_topic_title(project: str, branch: str | None) -> str:
-    """Generate topic title like 'Project @branch'."""
-    capitalized = project[0].upper() + project[1:] if project else project
+    """Generate topic title like 'project @branch'."""
     if branch:
-        return f"{capitalized} @{branch}"
-    return capitalized
+        return f"{project} @{branch}"
+    return project
 
 
 async def _create_topic(
@@ -219,17 +236,7 @@ def run_topic(
     # Resolve project root
     project_root = _get_project_root(cwd)
     
-    # Default project name from directory
-    if project is None:
-        project = project_root.name.lower()
-        if project.endswith(".git"):
-            project = project[:-4]
-    
-    # Default branch from current git branch
-    if branch is None:
-        branch = _get_current_branch(cwd)
-    
-    # Load settings
+    # Load settings first to check existing projects
     cfg_path = config_path or HOME_CONFIG_PATH
     try:
         settings, cfg_path = load_settings(cfg_path)
@@ -237,9 +244,34 @@ def run_topic(
         typer.echo(f"error: {e}", err=True)
         raise typer.Exit(code=1) from None
     
-    # Auto-init project if not exists (only for create mode)
+    # Default project name from directory
+    if project is None:
+        project = project_root.name.lower()
+        if project.endswith(".git"):
+            project = project[:-4]
+    
     project_key = project.lower()
-    if not delete:
+    
+    # Check if project already exists in config
+    project_exists = project_key in settings.projects or project in settings.projects
+    
+    # Check for alias conflicts only for NEW projects
+    if not project_exists:
+        conflict_reason = _check_alias_conflict(project)
+        if conflict_reason:
+            typer.echo(
+                f"error: project alias '{project}' conflicts with {conflict_reason}.\n"
+                f"please specify a different alias: takopi topic init <alias>",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+    
+    # Default branch from current git branch
+    if branch is None:
+        branch = _get_current_branch(cwd)
+    
+    # Auto-init project if not exists (only for create mode)
+    if not delete and not project_exists:
         try:
             _ensure_project(project_key, project_root, cfg_path)
             # Reload settings after auto-init
@@ -247,12 +279,8 @@ def run_topic(
         except ConfigError as e:
             typer.echo(f"warning: failed to auto-init project: {e}", err=True)
     
-    # Check project exists in config
-    projects_cfg = settings.to_projects_config(
-        config_path=cfg_path,
-        engine_ids=[settings.default_engine],
-    )
-    if project_key not in projects_cfg.projects:
+    # Check project exists in config (use settings.projects directly to avoid validation of ALL projects)
+    if project_key not in settings.projects and project not in settings.projects:
         typer.echo(
             f"error: project '{project}' not found in config. "
             f"Run `takopi init {project}` first.",

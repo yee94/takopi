@@ -9,7 +9,7 @@ from typing import Any
 
 import tomli_w
 
-HOME_CONFIG_PATH = Path.home() / ".takopi" / "takopi.toml"
+HOME_CONFIG_PATH = Path.home() / ".yee88" / "yee88.toml"
 
 
 class ConfigError(RuntimeError):
@@ -66,6 +66,7 @@ class ProjectConfig:
     default_engine: str | None = None
     worktree_base: str | None = None
     chat_id: int | None = None
+    system_prompt: str | None = None
 
     @property
     def worktrees_root(self) -> Path:
@@ -78,6 +79,7 @@ class ProjectConfig:
 class ProjectsConfig:
     projects: dict[str, ProjectConfig]
     default_project: str | None = None
+    global_system_prompt: str | None = None
     chat_map: dict[int, str] = field(default_factory=dict)
 
     def resolve(self, alias: str | None) -> ProjectConfig | None:
@@ -86,6 +88,12 @@ class ProjectsConfig:
                 return None
             return self.projects.get(self.default_project)
         return self.projects.get(alias.lower())
+
+    def resolve_system_prompt(self, alias: str | None) -> str | None:
+        project = self.resolve(alias)
+        if project is not None and project.system_prompt is not None:
+            return project.system_prompt
+        return self.global_system_prompt
 
     def project_for_chat(self, chat_id: int | None) -> str | None:
         if chat_id is None:

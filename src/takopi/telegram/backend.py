@@ -9,7 +9,7 @@ import anyio
 from ..backends import EngineBackend
 from ..logging import get_logger
 from ..runner_bridge import ExecBridgeConfig
-from ..settings import TelegramTopicsSettings, TelegramTransportSettings
+from ..settings import TelegramTopicsSettings, TelegramTransportSettings, load_settings_if_exists
 from ..transport_runtime import TransportRuntime
 from ..transports import SetupResult, TransportBackend
 from .bridge import (

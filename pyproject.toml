@@ -37,7 +37,7 @@ Repository = "https://github.com/banteg/takopi"
 Issues = "https://github.com/banteg/takopi/issues"
 
 [project.scripts]
-takopi = "takopi.cli:main"
+yee88 = "takopi.cli:main"
 
 [project.entry-points."takopi.engine_backends"]
 codex = "takopi.runners.codex:BACKEND"
