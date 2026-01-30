@@ -6,15 +6,15 @@ Projects let you route messages to repos from anywhere using `/alias`.
 
 ```sh
 cd ~/dev/happy-gadgets
-takopi init happy-gadgets
+yee88 init happy-gadgets
 ```
 
 This adds a project to your config:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
     ```
 
 === "toml"
@@ -36,13 +36,13 @@ Send:
 
 Projects can override global defaults:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
-    takopi config set projects.happy-gadgets.default_engine "claude"
-    takopi config set projects.happy-gadgets.worktrees_dir ".worktrees"
-    takopi config set projects.happy-gadgets.worktree_base "master"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.default_engine "claude"
+    yee88 config set projects.happy-gadgets.worktrees_dir ".worktrees"
+    yee88 config set projects.happy-gadgets.worktree_base "master"
     ```
 
 === "toml"
@@ -57,10 +57,10 @@ Projects can override global defaults:
 
 If you expect to edit config while Takopi is running, enable hot reload:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set watch_config true
+    yee88 config set watch_config true
     ```
 
 === "toml"
@@ -73,10 +73,10 @@ If you expect to edit config while Takopi is running, enable hot reload:
 
 If you mostly work in one repo:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set default_project "happy-gadgets"
+    yee88 config set default_project "happy-gadgets"
     ```
 
 === "toml"

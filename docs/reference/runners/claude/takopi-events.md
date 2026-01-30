@@ -2,7 +2,7 @@
 
 This document describes how the Claude Code runner translates Claude CLI JSONL events into Takopi events.
 
-> **Authoritative source:** The schema definitions are in `src/takopi/schemas/claude.py` and the translation logic is in `src/takopi/runners/claude.py`. When in doubt, refer to the code.
+> **Authoritative source:** The schema definitions are in `src/yee88/schemas/claude.py` and the translation logic is in `src/yee88/runners/claude.py`. When in doubt, refer to the code.
 
 The goal is to make a Claude runner feel identical to the Codex runner from the bridge/renderer point of view while preserving Takopi invariants (stable action ids, per-session serialization, single completed event).
 
@@ -64,7 +64,7 @@ Takopi requires **serialization per session id**:
   it until the run completes.
 - For resumed runs, acquire the lock immediately on entry.
 
-This matches the Codex runner behavior in `takopi/runners/codex.py`.
+This matches the Codex runner behavior in `yee88/runners/codex.py`.
 
 ---
 
@@ -194,9 +194,9 @@ without transformation. Optionally include `modelUsage` inside `usage` or
 
 Claude runner implementation summary (no Takopi domain model changes):
 
-1. [x] Create `takopi/runners/claude.py` implementing `Runner` and (custom)
+1. [x] Create `yee88/runners/claude.py` implementing `Runner` and (custom)
    resume parsing.
-2. [x] Define `BACKEND` in `takopi/runners/claude.py`:
+2. [x] Define `BACKEND` in `yee88/runners/claude.py`:
    - `install_cmd`: install command for the `claude` binary
    - `build_runner`: read `[claude]` config + construct runner
 3. [x] Add new docs (this file + `stream-json-cheatsheet.md`).
@@ -210,13 +210,13 @@ Claude runner implementation summary (no Takopi domain model changes):
 
 A minimal TOML config for Claude:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set claude.model "sonnet"
-    takopi config set claude.allowed_tools '["Bash", "Read", "Edit", "Write", "WebSearch"]'
-    takopi config set claude.dangerously_skip_permissions false
-    takopi config set claude.use_api_billing false
+    yee88 config set claude.model "sonnet"
+    yee88 config set claude.allowed_tools '["Bash", "Read", "Edit", "Write", "WebSearch"]'
+    yee88 config set claude.dangerously_skip_permissions false
+    yee88 config set claude.use_api_billing false
     ```
 
 === "toml"

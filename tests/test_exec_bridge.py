@@ -3,14 +3,14 @@ import uuid
 import anyio
 import pytest
 
-from takopi.runner_bridge import ExecBridgeConfig, IncomingMessage, handle_message
-from takopi.markdown import MarkdownParts, MarkdownPresenter
-from takopi.model import ResumeToken, TakopiEvent
-from takopi.telegram.render import prepare_telegram
-from takopi.runners.codex import CodexRunner
-from takopi.runners.mock import Advance, Emit, Raise, Return, ScriptRunner, Wait
-from takopi.settings import load_settings, require_telegram
-from takopi.transport import MessageRef, RenderedMessage, SendOptions
+from yee88.runner_bridge import ExecBridgeConfig, IncomingMessage, handle_message
+from yee88.markdown import MarkdownParts, MarkdownPresenter
+from yee88.model import ResumeToken, TakopiEvent
+from yee88.telegram.render import prepare_telegram
+from yee88.runners.codex import CodexRunner
+from yee88.runners.mock import Advance, Emit, Raise, Return, ScriptRunner, Wait
+from yee88.settings import load_settings, require_telegram
+from yee88.transport import MessageRef, RenderedMessage, SendOptions
 from tests.factories import action_completed, action_started
 
 CODEX_ENGINE = "codex"
@@ -78,9 +78,9 @@ def _return_runner(
 
 
 def test_require_telegram_rejects_empty_token(tmp_path) -> None:
-    from takopi.config import ConfigError
+    from yee88.config import ConfigError
 
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text(
         'transport = "telegram"\n\n[transports.telegram]\n'
         'bot_token = "   "\nchat_id = 123\n',
@@ -93,9 +93,9 @@ def test_require_telegram_rejects_empty_token(tmp_path) -> None:
 
 
 def test_load_settings_rejects_string_chat_id(tmp_path) -> None:
-    from takopi.config import ConfigError
+    from yee88.config import ConfigError
 
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text(
         'transport = "telegram"\n\n[transports.telegram]\n'
         'bot_token = "token"\nchat_id = "123"\n',
@@ -355,13 +355,13 @@ async def test_final_message_includes_ctx_line() -> None:
         runner=runner,
         incoming=IncomingMessage(channel_id=123, message_id=42, text="do it"),
         resume_token=None,
-        context_line="`ctx: takopi @feat/api`",
+        context_line="`ctx: yee88 @feat/api`",
         clock=clock,
     )
 
     assert transport.send_calls
     final_text = transport.send_calls[-1]["message"].text
-    assert "`ctx: takopi @feat/api`" in final_text
+    assert "`ctx: yee88 @feat/api`" in final_text
     assert "codex resume" in final_text.lower()
 
 

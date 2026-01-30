@@ -7,20 +7,20 @@ Takopi supports entrypoint-based plugins for engines, transports, and commands.
 1. Pick a plugin id (must match `^[a-z0-9_]{1,32}$`).
 2. Add a Python entrypoint in your package’s `pyproject.toml`.
 3. Implement a backend object (`BACKEND`) with `id == entrypoint name`.
-4. Install your package and validate with `takopi plugins --load`.
+4. Install your package and validate with `yee88 plugins --load`.
 
 ## Entrypoint groups
 
 Takopi uses three entrypoint groups:
 
 ```toml
-[project.entry-points."takopi.engine_backends"]
+[project.entry-points."yee88.engine_backends"]
 myengine = "myengine.backend:BACKEND"
 
-[project.entry-points."takopi.transport_backends"]
+[project.entry-points."yee88.transport_backends"]
 mytransport = "mytransport.backend:BACKEND"
 
-[project.entry-points."takopi.command_backends"]
+[project.entry-points."yee88.command_backends"]
 mycommand = "mycommand.backend:BACKEND"
 ```
 
@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from takopi.api import EngineBackend, EngineConfig, Runner
+from yee88.api import EngineBackend, EngineConfig, Runner
 
 
 def build_runner(config: EngineConfig, config_path: Path) -> Runner:
@@ -52,12 +52,12 @@ BACKEND = EngineBackend(
 )
 ```
 
-Engine config is a raw table in `takopi.toml`:
+Engine config is a raw table in `yee88.toml`:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set myengine.model "..."
+    yee88 config set myengine.model "..."
     ```
 
 === "toml"
@@ -70,7 +70,7 @@ Engine config is a raw table in `takopi.toml`:
 ## Transport backend plugin
 
 Transport plugins connect Takopi to other messaging systems (Slack, Discord, …).
-For most transports, delegate message handling to `handle_message()` from `takopi.api`.
+For most transports, delegate message handling to `handle_message()` from `yee88.api`.
 
 ## Command backend plugin
 
@@ -83,7 +83,7 @@ Minimal example:
 # mycommand/backend.py
 from __future__ import annotations
 
-from takopi.api import CommandContext, CommandResult
+from yee88.api import CommandContext, CommandResult
 
 
 class MyCommand:
@@ -102,10 +102,10 @@ BACKEND = MyCommand()
 
 Configure under `[plugins.<id>]`:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set plugins.hello.greeting "hello"
+    yee88 config set plugins.hello.greeting "hello"
     ```
 
 === "toml"
@@ -119,17 +119,17 @@ The parsed dict is available as `ctx.plugin_config` in `handle()`.
 
 ## Enable/disable installed plugins
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set plugins.enabled '["takopi-transport-slack", "takopi-engine-acme"]'
+    yee88 config set plugins.enabled '["yee88-transport-slack", "yee88-engine-acme"]'
     ```
 
 === "toml"
 
     ```toml
     [plugins]
-    enabled = ["takopi-transport-slack", "takopi-engine-acme"]
+    enabled = ["yee88-transport-slack", "yee88-engine-acme"]
     ```
 
 - `enabled = []` (default) means “load all installed plugins”.
@@ -138,8 +138,8 @@ The parsed dict is available as `ctx.plugin_config` in `handle()`.
 ## Validate discovery and loading
 
 ```sh
-takopi plugins
-takopi plugins --load
+yee88 plugins
+yee88 plugins --load
 ```
 
 ## Related

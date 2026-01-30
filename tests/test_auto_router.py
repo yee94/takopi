@@ -1,7 +1,7 @@
-from takopi.model import ResumeToken
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.claude import ClaudeRunner
-from takopi.runners.codex import CodexRunner
+from yee88.model import ResumeToken
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.claude import ClaudeRunner
+from yee88.runners.codex import CodexRunner
 
 
 def _router() -> tuple[AutoRouter, ClaudeRunner, CodexRunner]:

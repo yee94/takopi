@@ -82,13 +82,13 @@ flowchart TB
 
 Takopi discovers plugins via Python entrypoints and keeps loading lazy:
 
-- **Engine backends** (`takopi.engine_backends`)
-- **Transport backends** (`takopi.transport_backends`)
-- **Command backends** (`takopi.command_backends`)
+- **Engine backends** (`yee88.engine_backends`)
+- **Transport backends** (`yee88.transport_backends`)
+- **Command backends** (`yee88.command_backends`)
 
 Entrypoint names become plugin IDs, are validated up front (reserved names, regex),
 and are only loaded when needed. The public surface for plugin authors lives in
-`takopi.api`, while transports and commands interact with core routing via
+`yee88.api`, while transports and commands interact with core routing via
 `TransportRuntime`.
 
 ---
@@ -318,12 +318,12 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Config["~/.takopi/"]
-        toml[takopi.toml]
-        lock[takopi.lock]
+    subgraph Config["~/.yee88/"]
+        toml[yee88.toml]
+        lock[yee88.lock]
     end
 
-    subgraph toml_contents["takopi.toml"]
+    subgraph toml_contents["yee88.toml"]
         direction TB
         global["transport<br/>default_engine<br/>default_project"]
         telegram_cfg["[transports.telegram]<br/>bot_token = ...<br/>chat_id = ..."]

@@ -18,7 +18,7 @@ class FakeEntryPoint:
         group: str,
         *,
         loader: Callable[[], Any] | None = None,
-        dist_name: str | None = "takopi",
+        dist_name: str | None = "yee88",
     ) -> None:
         self.name = name
         self.value = value
@@ -40,7 +40,7 @@ class FakeEntryPoints(list):
 
 
 def install_entrypoints(monkeypatch, entrypoints: Iterable[FakeEntryPoint]) -> None:
-    from takopi import plugins
+    from yee88 import plugins
 
     def _entry_points() -> FakeEntryPoints:
         return FakeEntryPoints(entrypoints)

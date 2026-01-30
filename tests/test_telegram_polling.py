@@ -1,7 +1,7 @@
 import pytest
 
-from takopi.telegram.api_models import Chat, Message, Update, User
-from takopi.telegram.parsing import poll_incoming
+from yee88.telegram.api_models import Chat, Message, Update, User
+from yee88.telegram.parsing import poll_incoming
 from tests.telegram_fakes import FakeBot
 
 

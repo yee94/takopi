@@ -22,21 +22,21 @@ This document captures current behavior so transport changes stay intentional.
 
 ### Voice transcription
 
-If voice transcription is enabled, takopi downloads the voice payload from Telegram,
+If voice transcription is enabled, yee88 downloads the voice payload from Telegram,
 transcribes it with OpenAI, and routes the transcript through the same command and
 directive pipeline as typed text.
 
 Configuration (under `[transports.telegram]`):
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.voice_transcription true
-    takopi config set transports.telegram.voice_transcription_model "gpt-4o-mini-transcribe"
+    yee88 config set transports.telegram.voice_transcription true
+    yee88 config set transports.telegram.voice_transcription_model "gpt-4o-mini-transcribe"
 
     # local OpenAI-compatible transcription server (optional)
-    takopi config set transports.telegram.voice_transcription_base_url "http://localhost:8000/v1"
-    takopi config set transports.telegram.voice_transcription_api_key "local"
+    yee88 config set transports.telegram.voice_transcription_base_url "http://localhost:8000/v1"
+    yee88 config set transports.telegram.voice_transcription_api_key "local"
     ```
 
 === "toml"
@@ -50,7 +50,7 @@ Configuration (under `[transports.telegram]`):
 
 Set `OPENAI_API_KEY` in the environment (or `voice_transcription_api_key` in config).
 If transcription is enabled but no API key is available or the audio download fails,
-takopi replies with a short error and skips the run.
+yee88 replies with a short error and skips the run.
 
 To use a local OpenAI-compatible Whisper server, set `voice_transcription_base_url`
 (and `voice_transcription_api_key` if the server expects one). This keeps engine
@@ -61,7 +61,7 @@ requires a specific model name, set `voice_transcription_model` (for example,
 ### Trigger mode (mentions-only)
 
 Telegram’s bot privacy mode stops bots from seeing every message by default, but
-**admins always receive all messages** in groups. If you promote takopi to admin,
+**admins always receive all messages** in groups. If you promote yee88 to admin,
 Telegram will deliver every update even when privacy mode is enabled.
 
 To restore “only respond when invoked” behavior, use trigger mode:
@@ -109,10 +109,10 @@ Behavior:
 
 Configuration (under `[transports.telegram]`):
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.forward_coalesce_s 1.0
+    yee88 config set transports.telegram.forward_coalesce_s 1.0
     ```
 
 === "toml"
@@ -129,11 +129,11 @@ use chat mode with auto-resume enabled.
 
 Configuration (under `[transports.telegram]`):
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.show_resume_line true
-    takopi config set transports.telegram.session_mode "chat"
+    yee88 config set transports.telegram.show_resume_line true
+    yee88 config set transports.telegram.session_mode "chat"
     ```
 
 === "toml"
@@ -152,20 +152,20 @@ Behavior:
 
 State is stored in `telegram_chat_sessions_state.json` alongside the config file.
 
-Set `show_resume_line = false` to hide resume lines when takopi can auto-resume
+Set `show_resume_line = false` to hide resume lines when yee88 can auto-resume
 (topics or chat sessions) and a project context is resolved. Otherwise the resume
 line stays visible so reply-to-continue still works.
 
 ## Message overflow
 
-By default, takopi trims long final responses to ~3500 characters to stay under
+By default, yee88 trims long final responses to ~3500 characters to stay under
 Telegram's 4096 character limit after entity parsing. You can opt into splitting
 instead:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.message_overflow "split"
+    yee88 config set transports.telegram.message_overflow "split"
     ```
 
 === "toml"
@@ -186,11 +186,11 @@ topic, so replies keep the right context even after restarts.
 
 Configuration (under `[transports.telegram]`):
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.topics.enabled true
-    takopi config set transports.telegram.topics.scope "auto"
+    yee88 config set transports.telegram.topics.enabled true
+    yee88 config set transports.telegram.topics.scope "auto"
     ```
 
 === "toml"

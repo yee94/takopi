@@ -2,14 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from takopi.config import ProjectConfig, ProjectsConfig
-from takopi.context import RunContext
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.telegram.chat_prefs import ChatPrefsStore
-from takopi.telegram.engine_defaults import resolve_engine_for_message
-from takopi.telegram.topic_state import TopicStateStore
-from takopi.transport_runtime import TransportRuntime
+from yee88.config import ProjectConfig, ProjectsConfig
+from yee88.context import RunContext
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.telegram.chat_prefs import ChatPrefsStore
+from yee88.telegram.engine_defaults import resolve_engine_for_message
+from yee88.telegram.topic_state import TopicStateStore
+from yee88.transport_runtime import TransportRuntime
 
 
 @pytest.mark.anyio

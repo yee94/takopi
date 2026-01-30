@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from takopi.config import ProjectConfig, ProjectsConfig
-from takopi.context import RunContext
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.telegram.api_models import ChatMember, File
-from takopi.settings import TelegramFilesSettings
-from takopi.telegram.commands import file_transfer as transfer
-from takopi.telegram.types import TelegramDocument, TelegramIncomingMessage
-from takopi.transport_runtime import ResolvedMessage, TransportRuntime
+from yee88.config import ProjectConfig, ProjectsConfig
+from yee88.context import RunContext
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.telegram.api_models import ChatMember, File
+from yee88.settings import TelegramFilesSettings
+from yee88.telegram.commands import file_transfer as transfer
+from yee88.telegram.types import TelegramDocument, TelegramIncomingMessage
+from yee88.transport_runtime import ResolvedMessage, TransportRuntime
 from tests.telegram_fakes import DEFAULT_ENGINE_ID, FakeBot, FakeTransport, make_cfg
 
 

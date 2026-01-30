@@ -16,25 +16,25 @@ Projects fix this. Once you register a repo, you can target it from chat—even 
 
 ## 1. Register a project
 
-Navigate to the repo and run `takopi init`:
+Navigate to the repo and run `yee88 init`:
 
 ```sh
 cd ~/dev/happy-gadgets
-takopi init happy-gadgets
+yee88 init happy-gadgets
 ```
 
 Output:
 
 ```
-saved project 'happy-gadgets' to ~/.takopi/takopi.toml
+saved project 'happy-gadgets' to ~/.yee88/yee88.toml
 ```
 
 This adds an entry to your config (Takopi also fills in defaults like `worktrees_dir`, `default_engine`, and sometimes `worktree_base`):
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
     ```
 
 === "toml"
@@ -53,7 +53,7 @@ Now you can start Takopi from another repo. If you don't specify a project, Tako
 
 ```sh
 cd ~/dev/your-project
-takopi
+yee88
 ```
 
 And target the project by prefixing your message:
@@ -65,7 +65,7 @@ Takopi runs the agent in `~/dev/happy-gadgets`, not your current directory.
 
 The response includes a context footer:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     ctx: happy-gadgets<br>
     codex resume abc123
 
@@ -77,12 +77,12 @@ Worktrees let you run tasks on feature branches without touching your main check
 
 Add worktree config to your project:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
-    takopi config set projects.happy-gadgets.worktrees_dir ".worktrees"
-    takopi config set projects.happy-gadgets.worktree_base "main"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.worktrees_dir ".worktrees"
+    yee88 config set projects.happy-gadgets.worktree_base "main"
     ```
 
 === "toml"
@@ -115,7 +115,7 @@ Takopi:
 
 The response shows both project and branch:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     ctx: happy-gadgets @feat/new-login<br>
     codex resume xyz789
 
@@ -128,13 +128,13 @@ Once you've set a context (via `/<project-alias> @branch` or by replying), it st
 !!! user "You"
     /happy-gadgets @feat/new-login add tests
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     ctx: happy-gadgets @feat/new-login
 
 !!! user "reply to the bot's answer"
     also add integration tests
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     ctx: happy-gadgets @feat/new-login
 
 The `ctx:` line in each message carries the context forward.
@@ -143,10 +143,10 @@ The `ctx:` line in each message carries the context forward.
 
 If you mostly work in one repo, set it as the default:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set default_project "happy-gadgets"
+    yee88 config set default_project "happy-gadgets"
     ```
 
 === "toml"
@@ -167,7 +167,7 @@ Goes to `happy-gadgets` automatically.
 Here's a typical workflow:
 
 ```sh
-takopi
+yee88
 ```
 
 !!! user "You"
@@ -176,7 +176,7 @@ takopi
 !!! user "You"
     /happy-gadgets @feat/caching implement caching
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     ctx: happy-gadgets @feat/caching
 
     !!! user "You"
@@ -206,7 +206,7 @@ Full options for `[projects.<alias>]`:
 
 **"unknown project"**
 
-Run `takopi init <alias>` in the repo first.
+Run `yee88 init <alias>` in the repo first.
 
 **Branch worktree not created**
 

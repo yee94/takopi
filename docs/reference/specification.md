@@ -422,7 +422,7 @@ Takopi MUST prevent multiple instances from racing `getUpdates` offsets for the 
 
 ### 10.1 Lock file location
 
-The lock file MUST be stored at `<config_path>.lock`. For the default config path, this resolves to `~/.takopi/takopi.lock`.
+The lock file MUST be stored at `<config_path>.lock`. For the default config path, this resolves to `~/.yee88/yee88.lock`.
 
 ### 10.2 Lock file format
 

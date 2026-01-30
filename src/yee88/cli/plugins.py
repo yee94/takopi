@@ -190,7 +190,7 @@ def plugins_cmd(
 
 
 def _resolve_cli_attr(name: str) -> object | None:
-    cli_module = sys.modules.get("takopi.cli")
+    cli_module = sys.modules.get("yee88.cli")
     if cli_module is None:
         return None
     return getattr(cli_module, name, None)

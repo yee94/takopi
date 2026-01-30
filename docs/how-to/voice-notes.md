@@ -4,15 +4,15 @@ Enable transcription so voice notes become normal text runs.
 
 ## Enable transcription
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.voice_transcription true
-    takopi config set transports.telegram.voice_transcription_model "gpt-4o-mini-transcribe"
+    yee88 config set transports.telegram.voice_transcription true
+    yee88 config set transports.telegram.voice_transcription_model "gpt-4o-mini-transcribe"
 
     # local OpenAI-compatible transcription server (optional)
-    takopi config set transports.telegram.voice_transcription_base_url "http://localhost:8000/v1"
-    takopi config set transports.telegram.voice_transcription_api_key "local"
+    yee88 config set transports.telegram.voice_transcription_base_url "http://localhost:8000/v1"
+    yee88 config set transports.telegram.voice_transcription_api_key "local"
     ```
 
 === "toml"

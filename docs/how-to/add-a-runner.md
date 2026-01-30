@@ -8,10 +8,10 @@ A *runner* is the adapter between an engine-specific CLI (Codex, Claude Code, �
 If you are building an external plugin package, read `docs/plugins.md` first.
 
 Takopi is designed so that adding a runner usually means **adding one new module** under
-`src/takopi/runners/` plus a small **msgspec schema** module under `src/takopi/schemas/`—
+`src/yee88/runners/` plus a small **msgspec schema** module under `src/yee88/schemas/`—
 no changes to the bridge, renderer, or CLI.
 
-When writing code intended for plugins, prefer importing from `takopi.api`
+When writing code intended for plugins, prefer importing from `yee88.api`
 instead of internal modules.
 
 The walkthrough below uses an **imaginary engine** named **Acme** (`acme`) and intentionally mirrors
@@ -23,7 +23,7 @@ the patterns used in `runners/claude.py`.
 
 After you add a runner, you should be able to:
 
-- Run `takopi acme` (CLI subcommand is auto-registered).
+- Run `yee88 acme` (CLI subcommand is auto-registered).
 - Start a new session and get a resume line like `` `acme --resume <token>` ``.
 - Reply to any bot message containing that resume line and continue the same session.
 - See progress updates (optional) and always get a final completion event.
@@ -34,7 +34,7 @@ After you add a runner, you should be able to:
 
 ### 1) Takopi owns the domain model
 
-Takopi’s core types live in `takopi.model`:
+Takopi’s core types live in `yee88.model`:
 
 - `ResumeToken(engine, value)`
 - `StartedEvent(engine, resume, title?, meta?)`
@@ -75,8 +75,8 @@ This matters because Takopi’s Telegram truncation logic preserves resume lines
 
 Choose a stable engine id string. This string becomes:
 
-- The config table name (`[acme]` in `takopi.toml`)
-- The CLI subcommand (`takopi acme`)
+- The config table name (`[acme]` in `yee88.toml`)
+- The CLI subcommand (`yee88 acme`)
 - The `ResumeToken.engine`
 
 Engine ids must match the plugin ID regex:
@@ -109,16 +109,16 @@ Why this shape?
 
 ---
 
-### Step 2 — Create `src/takopi/schemas/acme.py` + `src/takopi/runners/acme.py`
+### Step 2 — Create `src/yee88/schemas/acme.py` + `src/yee88/runners/acme.py`
 
 Create a new schema module and a runner module:
 
 ```
-src/takopi/schemas/
+src/yee88/schemas/
   codex.py
   acme.py    # ← new
 
-src/takopi/runners/
+src/yee88/runners/
   codex.py
   claude.py
   mock.py
@@ -126,14 +126,14 @@ src/takopi/runners/
 ```
 
 Takopi discovers engines via **entrypoints**. Every engine backend must be exposed
-as an entrypoint under `takopi.engine_backends`, and the entrypoint name must match
+as an entrypoint under `yee88.engine_backends`, and the entrypoint name must match
 the backend id.
 
 For in-repo engines, add an entrypoint in `pyproject.toml`:
 
 ```toml
-[project.entry-points."takopi.engine_backends"]
-acme = "takopi.runners.acme:BACKEND"
+[project.entry-points."yee88.engine_backends"]
+acme = "yee88.runners.acme:BACKEND"
 ```
 
 For external plugins, use your package’s `pyproject.toml` with the same group.
@@ -180,7 +180,7 @@ class AcmeStreamState:
 #### Define a msgspec schema (recommended path)
 
 Codex now decodes JSONL with **msgspec**, and new runners should follow that pattern.
-Create a small schema module under `src/takopi/schemas/` and expose a `decode_event(...)`
+Create a small schema module under `src/yee88/schemas/` and expose a `decode_event(...)`
 function. Only include the event shapes your CLI actually emits.
 
 Minimal example:
@@ -279,7 +279,7 @@ def translate_acme_event(
             name = str(name or "tool")
 
             # Keep titles short and friendly.
-            # (Claude uses takopi.utils.paths.relativize_command / relativize_path)
+            # (Claude uses yee88.utils.paths.relativize_command / relativize_path)
             kind: ActionKind = "tool"
             title = name
             if name in {"Bash", "Shell"}:
@@ -546,7 +546,7 @@ BACKEND = EngineBackend(
 
 That’s it for wiring.
 
-Because engine backends are auto-discovered (`takopi.engines`), you do **not** need
+Because engine backends are auto-discovered (`yee88.engines`), you do **not** need
 to register the runner elsewhere.
 
 If the binary name differs from the engine id, set:
@@ -589,7 +589,7 @@ Then assert:
 
 If you use msgspec, also add a tiny schema sanity test (pattern from
 `tests/test_codex_schema.py`) that decodes your fixture with
-`takopi.schemas.<engine>.decode_event`.
+`yee88.schemas.<engine>.decode_event`.
 
 #### 3) Lock/serialization tests (optional, but great)
 
@@ -635,7 +635,7 @@ one targeted test catches regressions.
 
 Before you call the runner “done”:
 
-- [ ] `takopi acme` appears automatically (module exports `BACKEND`).
+- [ ] `yee88 acme` appears automatically (module exports `BACKEND`).
 - [ ] `format_resume()` matches `extract_resume()` + `is_resume_line()`.
 - [ ] Translation emits exactly one `StartedEvent` and one `CompletedEvent`.
 - [ ] `CompletedEvent.resume` matches `StartedEvent.resume`.

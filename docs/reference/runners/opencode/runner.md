@@ -11,12 +11,12 @@ npm i -g opencode-ai@latest
 
 ## Configuration
 
-Add to your `takopi.toml`:
+Add to your `yee88.toml`:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set opencode.model "claude-sonnet"
+    yee88 config set opencode.model "claude-sonnet"
     ```
 
 === "toml"
@@ -29,7 +29,7 @@ Add to your `takopi.toml`:
 ## Usage
 
 ```bash
-takopi opencode
+yee88 opencode
 ```
 
 ## Resume Format

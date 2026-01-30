@@ -23,8 +23,8 @@ Provide the **`pi`** engine backend so Takopi can:
 
 ### Engine selection
 
-* Default: `takopi` (auto-router uses `default_engine` from config)
-* Override: `takopi pi`
+* Default: `yee88` (auto-router uses `default_engine` from config)
+* Override: `yee88 pi`
 
 ### Resume UX (canonical line)
 
@@ -52,25 +52,25 @@ Pi does not accept `-- <prompt>` to protect prompts starting with `-`. Takopi pr
 
 ## Config additions
 
-Takopi config lives at `~/.takopi/takopi.toml`.
+Takopi config lives at `~/.yee88/yee88.toml`.
 
 Add a new optional `[pi]` section.
 
 Recommended schema:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set default_engine "pi"
-    takopi config set pi.model "..."
-    takopi config set pi.provider "..."
-    takopi config set pi.extra_args "[]"
+    yee88 config set default_engine "pi"
+    yee88 config set pi.model "..."
+    yee88 config set pi.provider "..."
+    yee88 config set pi.extra_args "[]"
     ```
 
 === "toml"
 
     ```toml
-    # ~/.takopi/takopi.toml
+    # ~/.yee88/yee88.toml
 
     default_engine = "pi"
 
@@ -90,7 +90,7 @@ Notes:
 
 ## Code changes (by file)
 
-### 1) New file: `src/takopi/runners/pi.py`
+### 1) New file: `src/yee88/runners/pi.py`
 
 Expose a module-level `BACKEND = EngineBackend(...)`.
 
@@ -142,5 +142,5 @@ set up credentials before using Takopi.
 
 ---
 
-If you want, I can also add a sample `takopi.toml` snippet to the README or
+If you want, I can also add a sample `yee88.toml` snippet to the README or
 include a small quickstart section for Pi in the onboarding panel.

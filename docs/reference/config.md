@@ -1,13 +1,13 @@
 # Configuration
 
-Takopi reads configuration from `~/.takopi/takopi.toml`.
+Takopi reads configuration from `~/.yee88/yee88.toml`.
 
 If you expect to edit config while Takopi is running, set:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set watch_config true
+    yee88 config set watch_config true
     ```
 
 === "toml"
@@ -27,11 +27,11 @@ If you expect to edit config while Takopi is running, set:
 
 ## `transports.telegram`
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.bot_token "..."
-    takopi config set transports.telegram.chat_id 123
+    yee88 config set transports.telegram.bot_token "..."
+    yee88 config set transports.telegram.chat_id 123
     ```
 
 === "toml"
@@ -84,14 +84,14 @@ File size limits (not configurable):
 
 ## `projects.<alias>`
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
-    takopi config set projects.happy-gadgets.worktrees_dir ".worktrees"
-    takopi config set projects.happy-gadgets.default_engine "claude"
-    takopi config set projects.happy-gadgets.worktree_base "master"
-    takopi config set projects.happy-gadgets.chat_id -1001234567890
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.worktrees_dir ".worktrees"
+    yee88 config set projects.happy-gadgets.default_engine "claude"
+    yee88 config set projects.happy-gadgets.worktree_base "master"
+    yee88 config set projects.happy-gadgets.chat_id -1001234567890
     ```
 
 === "toml"
@@ -119,17 +119,17 @@ Legacy config note: top-level `bot_token` / `chat_id` are auto-migrated into `[t
 
 ### `plugins.enabled`
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set plugins.enabled '["takopi-transport-slack", "takopi-engine-acme"]'
+    yee88 config set plugins.enabled '["yee88-transport-slack", "yee88-engine-acme"]'
     ```
 
 === "toml"
 
     ```toml
     [plugins]
-    enabled = ["takopi-transport-slack", "takopi-engine-acme"]
+    enabled = ["yee88-transport-slack", "yee88-engine-acme"]
     ```
 
 - `enabled = []` (default) means “load all installed plugins”.
@@ -151,11 +151,11 @@ here; plugin engines should document their own keys.
 | `extra_args` | string[] | `["-c", "notify=[]"]` | Extra CLI args for `codex` (exec-only flags are rejected). |
 | `profile` | string | (unset) | Passed as `--profile <name>` and used as the session title. |
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set codex.extra_args '["-c", "notify=[]"]'
-    takopi config set codex.profile "work"
+    yee88 config set codex.extra_args '["-c", "notify=[]"]'
+    yee88 config set codex.profile "work"
     ```
 
 === "toml"
@@ -175,13 +175,13 @@ here; plugin engines should document their own keys.
 | `dangerously_skip_permissions` | bool | `false` | Skip Claude permissions prompts. |
 | `use_api_billing` | bool | `false` | Keep `ANTHROPIC_API_KEY` for API billing. |
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set claude.model "claude-sonnet-4-5-20250929"
-    takopi config set claude.allowed_tools '["Bash", "Read", "Edit", "Write"]'
-    takopi config set claude.dangerously_skip_permissions false
-    takopi config set claude.use_api_billing false
+    yee88 config set claude.model "claude-sonnet-4-5-20250929"
+    yee88 config set claude.allowed_tools '["Bash", "Read", "Edit", "Write"]'
+    yee88 config set claude.dangerously_skip_permissions false
+    yee88 config set claude.use_api_billing false
     ```
 
 === "toml"
@@ -202,12 +202,12 @@ here; plugin engines should document their own keys.
 | `provider` | string | (unset) | Passed as `--provider`. |
 | `extra_args` | string[] | `[]` | Extra CLI args for `pi`. |
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set pi.model "..."
-    takopi config set pi.provider "..."
-    takopi config set pi.extra_args "[]"
+    yee88 config set pi.model "..."
+    yee88 config set pi.provider "..."
+    yee88 config set pi.extra_args "[]"
     ```
 
 === "toml"
@@ -225,10 +225,10 @@ here; plugin engines should document their own keys.
 |-----|------|---------|-------|
 | `model` | string | (unset) | Optional model override. |
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set opencode.model "claude-sonnet"
+    yee88 config set opencode.model "claude-sonnet"
     ```
 
 === "toml"

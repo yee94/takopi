@@ -9,9 +9,9 @@ from collections.abc import Callable
 
 from .ids import ID_PATTERN, is_valid_id
 
-ENGINE_GROUP = "takopi.engine_backends"
-TRANSPORT_GROUP = "takopi.transport_backends"
-COMMAND_GROUP = "takopi.command_backends"
+ENGINE_GROUP = "yee88.engine_backends"
+TRANSPORT_GROUP = "yee88.transport_backends"
+COMMAND_GROUP = "yee88.command_backends"
 
 _CANONICAL_NAME_RE = re.compile(r"[-_.]+")
 

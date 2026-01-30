@@ -1,9 +1,9 @@
-from takopi.model import ResumeToken
-from takopi.runners.claude import ClaudeRunner
-from takopi.runners.codex import CodexRunner
-from takopi.runners.opencode import OpenCodeRunner, OpenCodeStreamState
-from takopi.runners.pi import ENGINE as PI_ENGINE, PiRunner, PiStreamState
-from takopi.runners.run_options import EngineRunOptions, apply_run_options
+from yee88.model import ResumeToken
+from yee88.runners.claude import ClaudeRunner
+from yee88.runners.codex import CodexRunner
+from yee88.runners.opencode import OpenCodeRunner, OpenCodeStreamState
+from yee88.runners.pi import ENGINE as PI_ENGINE, PiRunner, PiStreamState
+from yee88.runners.run_options import EngineRunOptions, apply_run_options
 
 
 def test_codex_run_options_override_model_and_reasoning() -> None:

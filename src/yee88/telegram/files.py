@@ -137,7 +137,7 @@ def default_upload_path(
 def write_bytes_atomic(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
-        mode="wb", delete=False, dir=path.parent, prefix=".takopi-upload-"
+        mode="wb", delete=False, dir=path.parent, prefix=".yee88-upload-"
     ) as handle:
         handle.write(payload)
         temp_name = handle.name

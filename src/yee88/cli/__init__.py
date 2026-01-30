@@ -194,9 +194,9 @@ def create_app() -> typer.Typer:
     app = typer.Typer(
         add_completion=False,
         invoke_without_command=True,
-        help="Telegram bridge for coding agents. Docs: https://takopi.dev/",
+        help="Telegram bridge for coding agents. Docs: https://yee88.dev/",
     )
-    config_app = typer.Typer(help="Read and modify takopi config.")
+    config_app = typer.Typer(help="Read and modify yee88 config.")
     config_app.command(name="path")(config_path_cmd)
     config_app.command(name="list")(config_list)
     config_app.command(name="get")(config_get)

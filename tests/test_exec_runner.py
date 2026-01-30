@@ -4,14 +4,14 @@ import pytest
 
 from collections.abc import AsyncIterator
 
-from takopi.model import (
+from yee88.model import (
     ActionEvent,
     CompletedEvent,
     ResumeToken,
     StartedEvent,
     TakopiEvent,
 )
-from takopi.runners.codex import CodexRunner, find_exec_only_flag
+from yee88.runners.codex import CodexRunner, find_exec_only_flag
 
 CODEX_ENGINE = "codex"
 

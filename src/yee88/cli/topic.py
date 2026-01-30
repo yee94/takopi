@@ -261,7 +261,7 @@ def run_topic(
         if conflict_reason:
             typer.echo(
                 f"error: project alias '{project}' conflicts with {conflict_reason}.\n"
-                f"please specify a different alias: takopi topic init <alias>",
+                f"please specify a different alias: yee88 topic init <alias>",
                 err=True,
             )
             raise typer.Exit(code=1)
@@ -283,7 +283,7 @@ def run_topic(
     if project_key not in settings.projects and project not in settings.projects:
         typer.echo(
             f"error: project '{project}' not found in config. "
-            f"Run `takopi init {project}` first.",
+            f"Run `yee88 init {project}` first.",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -301,7 +301,7 @@ def run_topic(
     if not tg.topics.enabled:
         typer.echo(
             "error: topics not enabled. "
-            "Run `takopi config set transports.telegram.topics.enabled true`",
+            "Run `yee88 config set transports.telegram.topics.enabled true`",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -330,8 +330,8 @@ def run_topic(
         
         typer.echo(f"deleted topic binding for: {project}{' @' + branch if branch else ''}")
         typer.echo("")
-        typer.echo("done! the topic has been unbound from takopi.")
-        typer.echo("note: the telegram topic still exists but won't be managed by takopi.")
+        typer.echo("done! the topic has been unbound from yee88.")
+        typer.echo("note: the telegram topic still exists but won't be managed by yee88.")
     else:
         # Create mode
         typer.echo("creating topic...")

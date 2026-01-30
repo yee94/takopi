@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from takopi.config import ProjectConfig, ProjectsConfig
-from takopi.ids import RESERVED_CHAT_COMMANDS
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.telegram.trigger_mode import should_trigger_run
-from takopi.telegram.types import TelegramIncomingMessage
-from takopi.transport_runtime import TransportRuntime
+from yee88.config import ProjectConfig, ProjectsConfig
+from yee88.ids import RESERVED_CHAT_COMMANDS
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.telegram.trigger_mode import should_trigger_run
+from yee88.telegram.types import TelegramIncomingMessage
+from yee88.transport_runtime import TransportRuntime
 
 
 def _runtime() -> TransportRuntime:

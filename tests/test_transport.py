@@ -1,6 +1,6 @@
 """Tests for the transport module."""
 
-from takopi.transport import MessageRef
+from yee88.transport import MessageRef
 
 
 def test_message_ref_sender_id_field() -> None:

@@ -924,7 +924,7 @@ wheels = [
 ]
 
 [[package]]
-name = "takopi"
+name = "yee88"
 version = "0.21.4"
 source = { editable = "." }
 dependencies = [

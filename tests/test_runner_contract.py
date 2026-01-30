@@ -3,7 +3,7 @@ import pytest
 from collections.abc import AsyncGenerator
 from typing import cast
 
-from takopi.model import (
+from yee88.model import (
     Action,
     ActionEvent,
     CompletedEvent,
@@ -11,7 +11,7 @@ from takopi.model import (
     StartedEvent,
     TakopiEvent,
 )
-from takopi.runners.mock import Emit, Return, ScriptRunner, Wait
+from yee88.runners.mock import Emit, Return, ScriptRunner, Wait
 from tests.factories import action_started
 
 CODEX_ENGINE = "codex"

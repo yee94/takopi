@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-import takopi.runtime_loader as runtime_loader
-from takopi.config import ConfigError
-from takopi.settings import TakopiSettings
+import yee88.runtime_loader as runtime_loader
+from yee88.config import ConfigError
+from yee88.settings import TakopiSettings
 
 
 def test_build_runtime_spec_minimal(
@@ -18,7 +18,7 @@ def test_build_runtime_spec_minimal(
             "transports": {"telegram": {"bot_token": "token", "chat_id": 123}},
         }
     )
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text(
         'transport = "telegram"\n\n[transports.telegram]\n'
         'bot_token = "token"\nchat_id = 123\n',
@@ -47,6 +47,6 @@ def test_resolve_default_engine_unknown(tmp_path: Path) -> None:
         runtime_loader.resolve_default_engine(
             override="unknown",
             settings=settings,
-            config_path=tmp_path / "takopi.toml",
+            config_path=tmp_path / "yee88.toml",
             engine_ids=["codex"],
         )

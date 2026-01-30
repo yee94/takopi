@@ -27,11 +27,11 @@ Topics bind Telegram **forum threads** to a project/branch context. Each topic k
 
 ## Enable topics
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.topics.enabled true
-    takopi config set transports.telegram.topics.scope "auto"
+    yee88 config set transports.telegram.topics.enabled true
+    yee88 config set transports.telegram.topics.scope "auto"
     ```
 
 === "toml"

@@ -346,7 +346,7 @@ def render_topics_group_instructions(bot_ref: str) -> Text:
 
 def render_generic_capture_prompt(bot_ref: str) -> Text:
     return Text.assemble(
-        f"  send /start to {bot_ref} in the chat you want takopi to use "
+        f"  send /start to {bot_ref} in the chat you want yee88 to use "
         "(private chat or group)"
     )
 
@@ -377,7 +377,7 @@ def render_backup_failed_warning(error: OSError) -> Text:
 
 def render_persona_tabs() -> Table:
     active_label = "happian @memory-box"
-    inactive_label = "takopi @master"
+    inactive_label = "yee88 @master"
     grid = Table.grid(padding=(0, 2))
     grid.pad_edge = False
     grid.add_column()
@@ -505,7 +505,7 @@ async def prompt_persona(ui: UI) -> Persona | None:
     return cast(
         Persona,
         await ui.select(
-            "how will you use takopi?",
+            "how will you use yee88?",
             choices=[
                 ("assistant (ongoing chat, /new to reset)", "assistant"),
                 ("workspace (projects + branches, i'll set those up)", "workspace"),
@@ -877,7 +877,7 @@ async def step_capture_chat(ui: UI, svc: Services, state: OnboardingState) -> No
 
 
 async def step_default_engine(ui: UI, svc: Services, state: OnboardingState) -> None:
-    ui.print("takopi runs these engines on your computer. switch anytime with /agent.")
+    ui.print("yee88 runs these engines on your computer. switch anytime with /agent.")
     rows = svc.list_engines()
     render_engine_table(ui, rows)
     installed_ids = [engine_id for engine_id, installed, _ in rows if installed]
@@ -926,7 +926,7 @@ async def step_save_config(ui: UI, svc: Services, state: OnboardingState) -> Non
     merged = merge_config(raw_config, patch, config_path=state.config_path)
     svc.write_config(state.config_path, merged)
     ui.print("")
-    ui.print(Text("✓ setup complete. starting takopi...", style="green"))
+    ui.print(Text("✓ setup complete. starting yee88...", style="green"))
 
 
 def always_true(_state: OnboardingState) -> bool:

@@ -1,9 +1,9 @@
-from takopi.telegram import (
+from yee88.telegram import (
     TelegramCallbackQuery,
     TelegramIncomingMessage,
     parse_incoming_update,
 )
-from takopi.telegram.api_models import (
+from yee88.telegram.api_models import (
     CallbackQuery,
     CallbackQueryMessage,
     Chat,
@@ -278,7 +278,7 @@ def test_parse_incoming_update_callback_query() -> None:
         update_id=1,
         callback_query=CallbackQuery(
             id="cbq-1",
-            data="takopi:cancel",
+            data="yee88:cancel",
             from_=User(id=321),
             message=CallbackQueryMessage(
                 message_id=55,
@@ -293,7 +293,7 @@ def test_parse_incoming_update_callback_query() -> None:
     assert msg.chat_id == 123
     assert msg.message_id == 55
     assert msg.callback_query_id == "cbq-1"
-    assert msg.data == "takopi:cancel"
+    assert msg.data == "yee88:cancel"
     assert msg.sender_id == 321
 
 

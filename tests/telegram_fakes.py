@@ -2,12 +2,12 @@ from typing import Any
 
 import anyio
 
-from takopi.config import ProjectsConfig
-from takopi.markdown import MarkdownPresenter
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runner_bridge import ExecBridgeConfig
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.telegram.api_models import (
+from yee88.config import ProjectsConfig
+from yee88.markdown import MarkdownPresenter
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runner_bridge import ExecBridgeConfig
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.telegram.api_models import (
     Chat,
     ChatMember,
     File,
@@ -16,10 +16,10 @@ from takopi.telegram.api_models import (
     Update,
     User,
 )
-from takopi.telegram.bridge import TelegramBridgeConfig
-from takopi.telegram.client import BotClient
-from takopi.transport import MessageRef, RenderedMessage, SendOptions
-from takopi.transport_runtime import TransportRuntime
+from yee88.telegram.bridge import TelegramBridgeConfig
+from yee88.telegram.client import BotClient
+from yee88.transport import MessageRef, RenderedMessage, SendOptions
+from yee88.transport_runtime import TransportRuntime
 
 DEFAULT_ENGINE_ID = "codex"
 

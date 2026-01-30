@@ -11,9 +11,9 @@
     { time: 4982, cmd: "cat readme.md" },
     { time: 7217, thinking: "Scanning source structure" },
     { time: 7642, cmd: "ls src" },
-    { time: 9024, cmd: "ls src/takopi" },
+    { time: 9024, cmd: "ls src/yee88" },
     { time: 10927, thinking: "Exploring Telegram integration" },
-    { time: 11213, cmd: "rg telegram src/takopi" },
+    { time: 11213, cmd: "rg telegram src/yee88" },
     { time: 14884, thinking: "Planning deeper codebase inspection" },
     { time: 15210, cmd: "rg scripts pyproject.toml" },
     { time: 16796, cmd: "cat pyproject.toml" },
@@ -142,7 +142,7 @@
     // Type a follow-up message
     await new Promise(r => setTimeout(r, 800));
     const codexInput = output.querySelector('.codex-input');
-    await typeText(codexInput, 'omg takopi you are the best', 50);
+    await typeText(codexInput, 'omg yee88 you are the best', 50);
   }
 
   function init() {

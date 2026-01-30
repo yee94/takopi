@@ -1,5 +1,5 @@
 ---
-title: takopi
+title: yee88
 ---
 
 # Takopi documentation
@@ -18,8 +18,8 @@ Takopi runs coding agents on your computer and bridges them to Telegram. Send ta
 ## Quick start
 
 ```bash
-uv tool install -U takopi
-takopi --onboard
+uv tool install -U yee88
+yee88 --onboard
 ```
 
 Onboarding walks you through bot setup and asks how you want to work. [Full install guide →](tutorials/install.md)
@@ -59,7 +59,7 @@ Onboarding walks you through bot setup and asks how you want to work. [Full inst
 
 </div>
 
-You can change workflows later by editing `~/.takopi/takopi.toml`.
+You can change workflows later by editing `~/.yee88/yee88.toml`.
 
 ## Tutorials
 

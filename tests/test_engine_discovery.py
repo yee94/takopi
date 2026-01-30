@@ -5,7 +5,7 @@ import pytest
 import click
 import typer
 
-from takopi import cli, engines, plugins
+from yee88 import cli, engines, plugins
 from tests.plugin_fixtures import FakeEntryPoint, install_entrypoints
 
 
@@ -14,17 +14,17 @@ def engine_entrypoints(monkeypatch):
     entrypoints = [
         FakeEntryPoint(
             "codex",
-            "takopi.runners.codex:BACKEND",
+            "yee88.runners.codex:BACKEND",
             plugins.ENGINE_GROUP,
         ),
         FakeEntryPoint(
             "claude",
-            "takopi.runners.claude:BACKEND",
+            "yee88.runners.claude:BACKEND",
             plugins.ENGINE_GROUP,
         ),
         FakeEntryPoint(
             "bad-id",
-            "takopi.runners.bad:BACKEND",
+            "yee88.runners.bad:BACKEND",
             plugins.ENGINE_GROUP,
         ),
     ]
@@ -54,7 +54,7 @@ def test_engine_commands_do_not_expose_engine_id_option(
     group = cast(click.Group, typer.main.get_command(app))
     engine_ids = engines.list_backend_ids()
 
-    ctx = group.make_context("takopi", [])
+    ctx = group.make_context("yee88", [])
 
     for engine_id in engine_ids:
         command = group.get_command(ctx, engine_id)

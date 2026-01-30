@@ -1,4 +1,4 @@
-from takopi import api
+from yee88 import api
 
 
 def test_api_exports() -> None:

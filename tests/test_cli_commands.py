@@ -5,15 +5,15 @@ import tomllib
 
 from typer.testing import CliRunner
 
-from takopi import cli
-from takopi.config import ConfigError
-from takopi.plugins import (
+from yee88 import cli
+from yee88.config import ConfigError
+from yee88.plugins import (
     COMMAND_GROUP,
     ENGINE_GROUP,
     TRANSPORT_GROUP,
     PluginLoadError,
 )
-from takopi.settings import TakopiSettings
+from yee88.settings import TakopiSettings
 from tests.plugin_fixtures import FakeEntryPoint
 
 
@@ -26,7 +26,7 @@ def _min_config() -> dict:
 
 def test_init_registers_project(monkeypatch, tmp_path: Path) -> None:
     config = _min_config()
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     repo_path = tmp_path / "repo"
     repo_path.mkdir()
     monkeypatch.chdir(repo_path)
@@ -56,7 +56,7 @@ def test_init_registers_project(monkeypatch, tmp_path: Path) -> None:
 def test_init_declines_overwrite(monkeypatch, tmp_path: Path) -> None:
     config = _min_config()
     config["projects"] = {"demo": {"path": "/tmp/repo"}}
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     repo_path = tmp_path / "repo"
     repo_path.mkdir()
     monkeypatch.chdir(repo_path)
@@ -79,29 +79,29 @@ def test_plugins_cmd_loads_and_reports_errors(monkeypatch) -> None:
         ENGINE_GROUP: [
             FakeEntryPoint(
                 "codex",
-                "takopi.runners.codex:BACKEND",
+                "yee88.runners.codex:BACKEND",
                 ENGINE_GROUP,
-                dist_name="takopi",
+                dist_name="yee88",
             ),
             FakeEntryPoint(
                 "broken",
-                "takopi.runners.broken:BACKEND",
+                "yee88.runners.broken:BACKEND",
                 ENGINE_GROUP,
-                dist_name="takopi",
+                dist_name="yee88",
             ),
         ],
         TRANSPORT_GROUP: [
             FakeEntryPoint(
                 "telegram",
-                "takopi.transports.telegram:BACKEND",
+                "yee88.transports.telegram:BACKEND",
                 TRANSPORT_GROUP,
-                dist_name="takopi",
+                dist_name="yee88",
             )
         ],
         COMMAND_GROUP: [
             FakeEntryPoint(
                 "hello",
-                "takopi.commands.hello:BACKEND",
+                "yee88.commands.hello:BACKEND",
                 COMMAND_GROUP,
                 dist_name="thirdparty",
             )
@@ -132,7 +132,7 @@ def test_plugins_cmd_loads_and_reports_errors(monkeypatch) -> None:
         return object()
 
     monkeypatch.setattr(cli, "_load_settings_optional", lambda: (None, None))
-    monkeypatch.setattr(cli, "resolve_plugins_allowlist", lambda _settings: ["takopi"])
+    monkeypatch.setattr(cli, "resolve_plugins_allowlist", lambda _settings: ["yee88"])
     monkeypatch.setattr(cli, "list_entrypoints", _list_entrypoints)
     monkeypatch.setattr(cli, "get_backend", _get_backend)
     monkeypatch.setattr(cli, "get_transport", _get_transport)
@@ -144,21 +144,21 @@ def test_plugins_cmd_loads_and_reports_errors(monkeypatch) -> None:
             PluginLoadError(
                 ENGINE_GROUP,
                 "broken",
-                "takopi.runners.broken:BACKEND",
-                "takopi",
+                "yee88.runners.broken:BACKEND",
+                "yee88",
                 "boom",
             ),
             PluginLoadError(
                 TRANSPORT_GROUP,
                 "wire",
-                "takopi.transports.wire:BACKEND",
-                "takopi",
+                "yee88.transports.wire:BACKEND",
+                "yee88",
                 "missing",
             ),
             PluginLoadError(
                 COMMAND_GROUP,
                 "hello",
-                "takopi.commands.hello:BACKEND",
+                "yee88.commands.hello:BACKEND",
                 "thirdparty",
                 "oops",
             ),
@@ -172,11 +172,11 @@ def test_plugins_cmd_loads_and_reports_errors(monkeypatch) -> None:
     assert "engine backends:" in result.output
     assert "transport backends:" in result.output
     assert "command backends:" in result.output
-    assert "codex (takopi) enabled" in result.output
+    assert "codex (yee88) enabled" in result.output
     assert "hello (thirdparty) disabled" in result.output
     assert "errors:" in result.output
-    assert "engine broken (takopi): boom" in result.output
-    assert "transport wire (takopi): missing" in result.output
+    assert "engine broken (yee88): boom" in result.output
+    assert "transport wire (yee88): missing" in result.output
     assert "command hello (thirdparty): oops" in result.output
 
     assert ("engine", "codex") in calls
@@ -201,7 +201,7 @@ def test_onboarding_paths_calls_debug(monkeypatch) -> None:
 
 
 def test_config_path_cmd_outputs_override(tmp_path: Path) -> None:
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     runner = CliRunner()
     result = runner.invoke(
         cli.create_app(),
@@ -214,14 +214,14 @@ def test_config_path_cmd_outputs_override(tmp_path: Path) -> None:
 
 def test_config_path_cmd_defaults_to_home(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    config_path = tmp_path / ".takopi" / "takopi.toml"
+    config_path = tmp_path / ".yee88" / "yee88.toml"
     monkeypatch.setattr(cli, "HOME_CONFIG_PATH", config_path)
 
     runner = CliRunner()
     result = runner.invoke(cli.create_app(), ["config", "path"])
 
     assert result.exit_code == 0
-    assert result.output.strip() == "~/.takopi/takopi.toml"
+    assert result.output.strip() == "~/.yee88/yee88.toml"
 
 
 def test_doctor_rejects_non_telegram_transport(monkeypatch) -> None:

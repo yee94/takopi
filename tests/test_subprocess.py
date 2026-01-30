@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from takopi.utils import subprocess as subprocess_utils
+from yee88.utils import subprocess as subprocess_utils
 
 
 @pytest.mark.anyio

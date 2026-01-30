@@ -53,7 +53,7 @@ inspect or update settings with `yee88 config list`, `yee88 config get`, and `ye
 
 ## plugins
 
-takopi supports entrypoint-based plugins for engines, transports, and commands.
+yee88 supports entrypoint-based plugins for engines, transports, and commands.
 
 see [`docs/how-to/write-a-plugin.md`](docs/how-to/write-a-plugin.md) and [`docs/reference/plugin-api.md`](docs/reference/plugin-api.md).
 

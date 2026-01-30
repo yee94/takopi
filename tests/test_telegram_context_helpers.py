@@ -1,13 +1,13 @@
 from dataclasses import replace
 from pathlib import Path
 
-from takopi.config import ProjectConfig, ProjectsConfig
-from takopi.context import RunContext
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.telegram import context as tg_context
-from takopi.telegram.topic_state import TopicThreadSnapshot
-from takopi.transport_runtime import TransportRuntime
+from yee88.config import ProjectConfig, ProjectsConfig
+from yee88.context import RunContext
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.telegram import context as tg_context
+from yee88.telegram.topic_state import TopicThreadSnapshot
+from yee88.transport_runtime import TransportRuntime
 from tests.telegram_fakes import DEFAULT_ENGINE_ID, FakeTransport, make_cfg
 
 

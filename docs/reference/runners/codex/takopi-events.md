@@ -2,7 +2,7 @@
 
 This document describes how Codex exec --json events are translated to Takopi's normalized event model.
 
-> **Authoritative source:** The schema definitions are in `src/takopi/schemas/codex.py` and the translation logic is in `src/takopi/runners/codex.py`. When in doubt, refer to the code.
+> **Authoritative source:** The schema definitions are in `src/yee88/schemas/codex.py` and the translation logic is in `src/yee88/runners/codex.py`. When in doubt, refer to the code.
 
 ## The 3-event Takopi schema
 

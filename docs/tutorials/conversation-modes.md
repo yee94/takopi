@@ -19,7 +19,7 @@ This page explains what those settings mean and how to change them.
 !!! user "You"
     explain what this repo does
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     done · codex · 8s
     ...
 
@@ -47,14 +47,14 @@ Tip: set a default engine for this chat with `/agent set claude`.
 !!! user "You"
     explain what this repo does
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     done · codex · 8s
     ...
     codex resume abc123
 
 To continue the same session, **reply** to a message with a resume line:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     done · codex · 8s
 
     !!! user "You"
@@ -64,11 +64,11 @@ To continue the same session, **reply** to a message with a resume line:
 
 You can manually change these settings in your config file:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.session_mode "chat"
-    takopi config set transports.telegram.show_resume_line false
+    yee88 config set transports.telegram.session_mode "chat"
+    yee88 config set transports.telegram.show_resume_line false
     ```
 
 === "toml"
@@ -82,7 +82,7 @@ You can manually change these settings in your config file:
 Or re-run onboarding to pick a different workflow:
 
 ```sh
-takopi --onboard
+yee88 --onboard
 ```
 
 ## Resume lines in chat mode
@@ -92,10 +92,10 @@ Disable them if you want a fully clean footer, or enable `show_resume_line` to k
 
 If you prefer always-visible resume lines, set:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.show_resume_line true
+    yee88 config set transports.telegram.show_resume_line true
     ```
 
 === "toml"

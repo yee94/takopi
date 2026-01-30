@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from takopi.telegram.api_models import (
+from yee88.telegram.api_models import (
     Chat,
     ChatMember,
     File,
@@ -11,9 +11,9 @@ from takopi.telegram.api_models import (
     Update,
     User,
 )
-from takopi.telegram.client import BotClient
-from takopi.telegram.types import TelegramIncomingMessage, TelegramVoice
-from takopi.telegram.voice import VOICE_TRANSCRIPTION_DISABLED_HINT, transcribe_voice
+from yee88.telegram.client import BotClient
+from yee88.telegram.types import TelegramIncomingMessage, TelegramVoice
+from yee88.telegram.voice import VOICE_TRANSCRIPTION_DISABLED_HINT, transcribe_voice
 
 
 class _Bot(BotClient):

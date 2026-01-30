@@ -5,18 +5,18 @@ Set up Takopi for local development and run the checks.
 ## Clone and run
 
 ```bash
-git clone https://github.com/banteg/takopi
-cd takopi
+git clone https://github.com/banteg/yee88
+cd yee88
 
 # Run directly with uv (installs deps automatically)
-uv run takopi --help
+uv run yee88 --help
 ```
 
 ## Install locally (optional)
 
 ```bash
 uv tool install .
-takopi --help
+yee88 --help
 ```
 
 ## Run checks

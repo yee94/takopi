@@ -61,14 +61,14 @@ Takopi’s CLI is an auto-router by default; engine subcommands override the def
 
 | Command | Description |
 |---------|-------------|
-| `takopi` | Start Takopi (runs onboarding if setup/config is missing and you’re in a TTY). |
-| `takopi <engine>` | Run with a specific engine (e.g. `takopi codex`). |
-| `takopi init <alias>` | Register the current repo as a project. |
-| `takopi chat-id` | Capture the current chat id. |
-| `takopi chat-id --project <alias>` | Save the captured chat id to a project. |
-| `takopi doctor` | Validate Telegram connectivity and related config. |
-| `takopi plugins` | List discovered plugins without loading them. |
-| `takopi plugins --load` | Load each plugin to validate types and surface import errors. |
+| `yee88` | Start Takopi (runs onboarding if setup/config is missing and you’re in a TTY). |
+| `yee88 <engine>` | Run with a specific engine (e.g. `yee88 codex`). |
+| `yee88 init <alias>` | Register the current repo as a project. |
+| `yee88 chat-id` | Capture the current chat id. |
+| `yee88 chat-id --project <alias>` | Save the captured chat id to a project. |
+| `yee88 doctor` | Validate Telegram connectivity and related config. |
+| `yee88 plugins` | List discovered plugins without loading them. |
+| `yee88 plugins --load` | Load each plugin to validate types and surface import errors. |
 
 ### Common flags
 

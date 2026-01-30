@@ -24,10 +24,10 @@ Provide the **`claude`** engine backend so Takopi can:
 
 ### Engine selection
 
-* Default: `takopi` (auto-router uses `default_engine` from config)
-* Override: `takopi claude`
+* Default: `yee88` (auto-router uses `default_engine` from config)
+* Override: `yee88 claude`
 
-Takopi runs in auto-router mode by default; `takopi claude` or `/claude` selects
+Takopi runs in auto-router mode by default; `yee88 claude` or `/claude` selects
 Claude for new threads.
 
 ### Resume UX (canonical line)
@@ -62,26 +62,26 @@ Takopi should document this clearly: if permissions aren’t configured and Clau
 
 ## Config additions
 
-Takopi config lives at `~/.takopi/takopi.toml`.
+Takopi config lives at `~/.yee88/yee88.toml`.
 
 Add a new optional `[claude]` section.
 
 Recommended v1 schema:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set default_engine "claude"
-    takopi config set claude.model "claude-sonnet-4-5-20250929"
-    takopi config set claude.allowed_tools '["Bash", "Read", "Edit", "Write"]'
-    takopi config set claude.dangerously_skip_permissions false
-    takopi config set claude.use_api_billing false
+    yee88 config set default_engine "claude"
+    yee88 config set claude.model "claude-sonnet-4-5-20250929"
+    yee88 config set claude.allowed_tools '["Bash", "Read", "Edit", "Write"]'
+    yee88 config set claude.dangerously_skip_permissions false
+    yee88 config set claude.use_api_billing false
     ```
 
 === "toml"
 
     ```toml
-    # ~/.takopi/takopi.toml
+    # ~/.yee88/yee88.toml
 
     default_engine = "claude"
 
@@ -104,12 +104,12 @@ Notes:
 
 ## Code changes (by file)
 
-### 1) New file: `src/takopi/runners/claude.py`
+### 1) New file: `src/yee88/runners/claude.py`
 
 #### Backend export
 
-Expose a module-level `BACKEND = EngineBackend(...)` (from `takopi.backends`).
-Takopi auto-discovers runners by importing `takopi.runners.*` and looking for
+Expose a module-level `BACKEND = EngineBackend(...)` (from `yee88.backends`).
+Takopi auto-discovers runners by importing `yee88.runners.*` and looking for
 `BACKEND`.
 
 `BACKEND` should provide:
@@ -377,8 +377,8 @@ Mirror the existing `CodexRunner` tests patterns.
 
 ## Implementation checklist (v0.3.0)
 
-* [x] Export `BACKEND = EngineBackend(...)` from `src/takopi/runners/claude.py`.
-* [x] Add `src/takopi/runners/claude.py` implementing the `Runner` protocol.
+* [x] Export `BACKEND = EngineBackend(...)` from `src/yee88/runners/claude.py`.
+* [x] Add `src/yee88/runners/claude.py` implementing the `Runner` protocol.
 * [x] Add tests + stub executable fixtures.
 * [x] Update README and developing docs.
 * [ ] Run full test suite before release.

@@ -3,14 +3,14 @@ from pathlib import Path
 import anyio
 import pytest
 
-import takopi.config_watch as config_watch
-from takopi.config_watch import ConfigReload, config_status, watch_config
-from takopi.config import ProjectsConfig
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runtime_loader import RuntimeSpec
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.settings import TakopiSettings
-from takopi.transport_runtime import TransportRuntime
+import yee88.config_watch as config_watch
+from yee88.config_watch import ConfigReload, config_status, watch_config
+from yee88.config import ProjectsConfig
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runtime_loader import RuntimeSpec
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.settings import TakopiSettings
+from yee88.transport_runtime import TransportRuntime
 
 
 def test_config_status_variants(tmp_path: Path) -> None:
@@ -25,7 +25,7 @@ def test_config_status_variants(tmp_path: Path) -> None:
     assert status == "invalid"
     assert signature is None
 
-    config_file = tmp_path / "takopi.toml"
+    config_file = tmp_path / "yee88.toml"
     config_file.write_text(
         'transport = "telegram"\n\n[transports.telegram]\n'
         'bot_token = "token"\nchat_id = 123\n',
@@ -40,7 +40,7 @@ def test_config_status_variants(tmp_path: Path) -> None:
 async def test_watch_config_applies_runtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text('default_engine = "codex"\n', encoding="utf-8")
     resolved_path = config_path.resolve()
 

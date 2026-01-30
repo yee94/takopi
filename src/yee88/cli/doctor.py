@@ -126,7 +126,7 @@ def run_doctor(
 
     if settings.transport != "telegram":
         typer.echo(
-            "error: takopi doctor currently supports the telegram transport only.",
+            "error: yee88 doctor currently supports the telegram transport only.",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -159,7 +159,7 @@ def run_doctor(
         *file_checks(settings),
         *voice_checks(settings),
     ]
-    typer.echo("takopi doctor")
+    typer.echo("yee88 doctor")
     for check in checks:
         typer.echo(check.render())
     if any(check.status == "error" for check in checks):
@@ -167,7 +167,7 @@ def run_doctor(
 
 
 def _resolve_cli_attr(name: str) -> object | None:
-    cli_module = sys.modules.get("takopi.cli")
+    cli_module = sys.modules.get("yee88.cli")
     if cli_module is None:
         return None
     return getattr(cli_module, name, None)

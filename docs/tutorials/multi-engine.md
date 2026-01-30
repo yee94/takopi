@@ -32,7 +32,7 @@ Prefix any message with `/<engine>`:
 
 The engine only applies to that message. The response will have a resume line for that engine:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     done · claude · 8s<br>
     claude --resume abc123
 
@@ -64,7 +64,7 @@ Use `/agent set` to change the default for the current scope:
 
 Response:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     chat default engine set to claude
 
 Now all new conversations in this chat use Claude (unless you explicitly override with `/codex`).
@@ -76,7 +76,7 @@ Check the current default:
 
 Example response:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     engine: claude (chat default)<br>
     defaults: topic: none, chat: claude, project: none, global: codex<br>
     available: codex, claude, opencode, pi
@@ -88,7 +88,7 @@ Clear it:
 
 Response:
 
-!!! takopi "Takopi"
+!!! yee88 "Takopi"
     chat default engine cleared.
 
 ## 4. Defaults in topics
@@ -109,11 +109,11 @@ Each topic remembers its own default.
 
 Set a default engine in your project config:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
-    takopi config set projects.happy-gadgets.default_engine "claude"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.default_engine "claude"
     ```
 
 === "toml"
@@ -135,7 +135,7 @@ When Takopi picks an engine, it checks (highest to lowest):
 3. **Topic default** — `/agent set` in this forum topic
 4. **Chat default** — `/agent set` in this chat
 5. **Project default** — `default_engine` in project config
-6. **Global default** — `default_engine` at the top of `takopi.toml`
+6. **Global default** — `default_engine` at the top of `yee88.toml`
 
 This means: resume lines always win, then explicit directives, then the most specific default applies.
 
@@ -153,15 +153,15 @@ This means: resume lines always win, then explicit directives, then the most spe
 
 **Pattern: Quick questions vs. deep work**
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
     # Global default for quick stuff
-    takopi config set default_engine "codex"
+    yee88 config set default_engine "codex"
 
     # Project default for complex codebase
-    takopi config set projects.backend.path "~/dev/backend"
-    takopi config set projects.backend.default_engine "claude"
+    yee88 config set projects.backend.path "~/dev/backend"
+    yee88 config set projects.backend.default_engine "claude"
     ```
 
 === "toml"

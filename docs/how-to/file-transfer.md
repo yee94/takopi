@@ -4,15 +4,15 @@ Upload files into the active repo/worktree or fetch files back into Telegram.
 
 ## Enable file transfer
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.files.enabled true
-    takopi config set transports.telegram.files.auto_put true
-    takopi config set transports.telegram.files.auto_put_mode "upload"
-    takopi config set transports.telegram.files.uploads_dir "incoming"
-    takopi config set transports.telegram.files.allowed_user_ids "[123456789]"
-    takopi config set transports.telegram.files.deny_globs '[".git/**", ".env", ".envrc", "**/*.pem", "**/.ssh/**"]'
+    yee88 config set transports.telegram.files.enabled true
+    yee88 config set transports.telegram.files.auto_put true
+    yee88 config set transports.telegram.files.auto_put_mode "upload"
+    yee88 config set transports.telegram.files.uploads_dir "incoming"
+    yee88 config set transports.telegram.files.allowed_user_ids "[123456789]"
+    yee88 config set transports.telegram.files.deny_globs '[".git/**", ".env", ".envrc", "**/*.pem", "**/.ssh/**"]'
     ```
 
 === "toml"

@@ -2,7 +2,7 @@
 
 This document describes how OpenCode JSON events are translated to Takopi's normalized event model.
 
-> **Authoritative source:** The schema definitions are in `src/takopi/schemas/opencode.py` and the translation logic is in `src/takopi/runners/opencode.py`. When in doubt, refer to the code.
+> **Authoritative source:** The schema definitions are in `src/yee88/schemas/opencode.py` and the translation logic is in `src/yee88/runners/opencode.py`. When in doubt, refer to the code.
 
 ## Event Translation
 

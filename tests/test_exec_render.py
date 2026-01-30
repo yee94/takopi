@@ -2,7 +2,7 @@ from typing import cast
 from types import SimpleNamespace
 from pathlib import Path
 
-from takopi.markdown import (
+from yee88.markdown import (
     HARD_BREAK,
     MarkdownFormatter,
     STATUS,
@@ -13,10 +13,10 @@ from takopi.markdown import (
     render_event_cli,
     shorten,
 )
-from takopi.model import Action, ActionEvent, ResumeToken, StartedEvent, TakopiEvent
-from takopi.progress import ProgressTracker
-from takopi.telegram.render import render_markdown
-from takopi.utils.paths import reset_run_base_dir, set_run_base_dir
+from yee88.model import Action, ActionEvent, ResumeToken, StartedEvent, TakopiEvent
+from yee88.progress import ProgressTracker
+from yee88.telegram.render import render_markdown
+from yee88.utils.paths import reset_run_base_dir, set_run_base_dir
 from tests.factories import (
     action_completed,
     action_started,

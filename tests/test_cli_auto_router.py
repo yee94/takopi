@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from takopi import cli
-from takopi.backends import EngineBackend, SetupIssue
-from takopi.settings import TakopiSettings
-from takopi.transports import SetupResult
+from yee88 import cli
+from yee88.backends import EngineBackend, SetupIssue
+from yee88.settings import TakopiSettings
+from yee88.transports import SetupResult
 
 
 @dataclass
@@ -75,10 +75,10 @@ def _settings() -> TakopiSettings:
 
 
 def test_run_auto_router_success_releases_lock(monkeypatch, tmp_path: Path) -> None:
-    setup = SetupResult(issues=[], config_path=tmp_path / "takopi.toml")
+    setup = SetupResult(issues=[], config_path=tmp_path / "yee88.toml")
     transport = _FakeTransport(setup)
     engine_backend = _engine_backend()
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
 
     monkeypatch.setattr(
         cli,
@@ -120,7 +120,7 @@ def test_run_auto_router_success_releases_lock(monkeypatch, tmp_path: Path) -> N
 
 
 def test_run_auto_router_requires_tty_for_onboard(monkeypatch, tmp_path: Path) -> None:
-    setup = SetupResult(issues=[], config_path=tmp_path / "takopi.toml")
+    setup = SetupResult(issues=[], config_path=tmp_path / "yee88.toml")
     transport = _FakeTransport(setup)
 
     monkeypatch.setattr(

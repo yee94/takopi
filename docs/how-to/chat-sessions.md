@@ -9,10 +9,10 @@ Chat sessions store one resume token per engine per chat (per sender in group ch
 
 If you chose **handoff** during onboarding and want to switch to chat mode:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.session_mode "chat"
+    yee88 config set transports.telegram.session_mode "chat"
     ```
 
 === "toml"
@@ -40,10 +40,10 @@ Chat sessions do not remove reply-to-continue. If resume lines are visible, you 
 
 If you prefer a cleaner chat, hide resume lines:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set transports.telegram.show_resume_line false
+    yee88 config set transports.telegram.show_resume_line false
     ```
 
 === "toml"

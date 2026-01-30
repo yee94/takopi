@@ -16,5 +16,5 @@ This page was split into smaller Diátaxis pages.
 
 ## Diagnostics
 
-- `takopi plugins` lists discovered entrypoints without loading them.
-- `takopi plugins --load` loads each plugin to surface import errors.
+- `yee88 plugins` lists discovered entrypoints without loading them.
+- `yee88 plugins --load` loads each plugin to surface import errors.

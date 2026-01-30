@@ -1,12 +1,12 @@
 import httpx
 import pytest
 
-from takopi.telegram.client_api import (
+from yee88.telegram.client_api import (
     HttpBotClient,
     TelegramRetryAfter,
     retry_after_from_payload,
 )
-from takopi.telegram.api_models import User
+from yee88.telegram.api_models import User
 
 
 def _response() -> httpx.Response:

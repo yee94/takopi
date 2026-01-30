@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from takopi.telegram.api_models import ChatMember
-from takopi.telegram.commands.agent import _handle_agent_command
-from takopi.telegram.commands.trigger import _handle_trigger_command
-from takopi.telegram.chat_prefs import ChatPrefsStore
-from takopi.telegram.topic_state import TopicStateStore
-from takopi.telegram.types import TelegramIncomingMessage
-from takopi.settings import TelegramTopicsSettings
+from yee88.telegram.api_models import ChatMember
+from yee88.telegram.commands.agent import _handle_agent_command
+from yee88.telegram.commands.trigger import _handle_trigger_command
+from yee88.telegram.chat_prefs import ChatPrefsStore
+from yee88.telegram.topic_state import TopicStateStore
+from yee88.telegram.types import TelegramIncomingMessage
+from yee88.settings import TelegramTopicsSettings
 from tests.telegram_fakes import FakeBot, FakeTransport, make_cfg
 
 

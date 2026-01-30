@@ -3,10 +3,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from takopi import cli
-from takopi.config import ConfigError, read_config
-from takopi.ids import RESERVED_CHAT_COMMANDS
-from takopi.settings import TakopiSettings
+from yee88 import cli
+from yee88.config import ConfigError, read_config
+from yee88.ids import RESERVED_CHAT_COMMANDS
+from yee88.settings import TakopiSettings
 
 
 def _base_config() -> dict:
@@ -18,7 +18,7 @@ def test_parse_projects_rejects_engine_alias() -> None:
     with pytest.raises(ConfigError, match="aliases must not match engine ids"):
         settings = TakopiSettings.model_validate(config)
         settings.to_projects_config(
-            config_path=Path("takopi.toml"),
+            config_path=Path("yee88.toml"),
             engine_ids=["codex"],
             reserved=RESERVED_CHAT_COMMANDS,
         )
@@ -29,20 +29,20 @@ def test_parse_projects_default_project_must_exist() -> None:
     with pytest.raises(ConfigError, match="default_project"):
         settings = TakopiSettings.model_validate(config)
         settings.to_projects_config(
-            config_path=Path("takopi.toml"),
+            config_path=Path("yee88.toml"),
             engine_ids=["codex"],
             reserved=RESERVED_CHAT_COMMANDS,
         )
 
 
 def test_init_writes_project(monkeypatch, tmp_path) -> None:
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text(
         'transport = "telegram"\n\n[transports.telegram]\n'
         'bot_token = "token"\nchat_id = 123\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr("takopi.config.HOME_CONFIG_PATH", config_path)
+    monkeypatch.setattr("yee88.config.HOME_CONFIG_PATH", config_path)
     monkeypatch.setattr(cli, "resolve_default_base", lambda _: "main")
     monkeypatch.setattr(cli, "_load_settings_optional", lambda: (None, None))
 
@@ -62,9 +62,9 @@ def test_init_writes_project(monkeypatch, tmp_path) -> None:
 
 
 def test_init_migrates_legacy_config(monkeypatch, tmp_path) -> None:
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     config_path.write_text('bot_token = "token"\nchat_id = 123\n', encoding="utf-8")
-    monkeypatch.setattr("takopi.config.HOME_CONFIG_PATH", config_path)
+    monkeypatch.setattr("yee88.config.HOME_CONFIG_PATH", config_path)
     monkeypatch.setattr(cli, "resolve_default_base", lambda _: "main")
     monkeypatch.setattr(cli, "_load_settings_optional", lambda: (None, None))
 
@@ -93,7 +93,7 @@ def test_projects_default_engine_unknown() -> None:
     settings = TakopiSettings.model_validate(config)
     with pytest.raises(ConfigError, match=r"projects\.z80\.default_engine"):
         settings.to_projects_config(
-            config_path=Path("takopi.toml"),
+            config_path=Path("yee88.toml"),
             engine_ids=["codex"],
             reserved=RESERVED_CHAT_COMMANDS,
         )
@@ -107,7 +107,7 @@ def test_projects_chat_id_cannot_match_transport_chat_id() -> None:
     settings = TakopiSettings.model_validate(config)
     with pytest.raises(ConfigError, match="chat_id"):
         settings.to_projects_config(
-            config_path=Path("takopi.toml"),
+            config_path=Path("yee88.toml"),
             engine_ids=["codex"],
             reserved=RESERVED_CHAT_COMMANDS,
         )
@@ -124,14 +124,14 @@ def test_projects_chat_id_must_be_unique() -> None:
     settings = TakopiSettings.model_validate(config)
     with pytest.raises(ConfigError, match="chat_id"):
         settings.to_projects_config(
-            config_path=Path("takopi.toml"),
+            config_path=Path("yee88.toml"),
             engine_ids=["codex"],
             reserved=RESERVED_CHAT_COMMANDS,
         )
 
 
 def test_projects_relative_path_resolves(tmp_path: Path) -> None:
-    config_path = tmp_path / "takopi.toml"
+    config_path = tmp_path / "yee88.toml"
     settings = TakopiSettings.model_validate(
         {**_base_config(), "projects": {"z80": {"path": "repo"}}}
     )

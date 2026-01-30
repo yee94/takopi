@@ -1,7 +1,7 @@
 import pytest
 
-from takopi import commands, plugins
-from takopi.config import ConfigError
+from yee88 import commands, plugins
+from yee88.config import ConfigError
 from tests.plugin_fixtures import FakeEntryPoint, install_entrypoints
 
 
@@ -19,7 +19,7 @@ def command_entrypoints(monkeypatch):
     entrypoints = [
         FakeEntryPoint(
             "hello",
-            "takopi.commands.hello:BACKEND",
+            "yee88.commands.hello:BACKEND",
             plugins.COMMAND_GROUP,
             loader=DummyCommand,
         )

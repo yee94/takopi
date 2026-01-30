@@ -3,11 +3,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from takopi import cli
-from takopi.config import ConfigError
-from takopi.settings import TakopiSettings
-from takopi.settings import TelegramTopicsSettings
-from takopi.telegram.api_models import Chat, User
+from yee88 import cli
+from yee88.config import ConfigError
+from yee88.settings import TakopiSettings
+from yee88.settings import TelegramTopicsSettings
+from yee88.telegram.api_models import Chat, User
 
 
 def _settings() -> TakopiSettings:
@@ -34,7 +34,7 @@ def test_doctor_ok(monkeypatch) -> None:
     result = runner.invoke(cli.create_app(), ["doctor"])
 
     assert result.exit_code == 0
-    assert "takopi doctor" in result.output
+    assert "yee88 doctor" in result.output
     assert "telegram token: ok" in result.output
 
 

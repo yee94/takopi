@@ -1,4 +1,4 @@
-"""Msgspec models for Telegram Bot API payloads (subset used by takopi).
+"""Msgspec models for Telegram Bot API payloads (subset used by yee88).
 
 Derived from telegram-api.html in the repository.
 """

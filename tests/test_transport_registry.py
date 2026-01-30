@@ -1,7 +1,7 @@
 import pytest
 
-from takopi import plugins, transports
-from takopi.config import ConfigError
+from yee88 import plugins, transports
+from yee88.config import ConfigError
 from tests.plugin_fixtures import FakeEntryPoint, install_entrypoints
 
 
@@ -43,7 +43,7 @@ def transport_entrypoints(monkeypatch):
     entrypoints = [
         FakeEntryPoint(
             "telegram",
-            "takopi.telegram.backend:telegram_backend",
+            "yee88.telegram.backend:telegram_backend",
             plugins.TRANSPORT_GROUP,
             loader=DummyTransport,
         )

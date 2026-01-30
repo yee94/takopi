@@ -3,10 +3,10 @@
 Takopi’s **public plugin API** is exported from:
 
 ```
-takopi.api
+yee88.api
 ```
 
-Anything not imported from `takopi.api` should be considered **internal** and
+Anything not imported from `yee88.api` should be considered **internal** and
 subject to change. The API version is tracked by `TAKOPI_PLUGIN_API_VERSION`.
 
 ---
@@ -17,7 +17,7 @@ subject to change. The API version is tracked by `TAKOPI_PLUGIN_API_VERSION`.
 - Plugins should pin to a compatible Takopi range, e.g.:
 
 ```toml
-dependencies = ["takopi>=0.14,<0.15"]
+dependencies = ["yee88>=0.14,<0.15"]
 ```
 
 ---
@@ -33,7 +33,7 @@ dependencies = ["takopi>=0.14,<0.15"]
 | `Runner` | Runner protocol |
 | `BaseRunner` | Helper base class with resume locking |
 | `JsonlSubprocessRunner` | Helper for JSONL-streaming CLIs |
-| `EventFactory` | Helper for building takopi events |
+| `EventFactory` | Helper for building yee88 events |
 
 ### Transport backends
 
@@ -90,7 +90,7 @@ dependencies = ["takopi>=0.14,<0.15"]
 
 | Symbol | Purpose |
 |--------|---------|
-| `HOME_CONFIG_PATH` | Canonical config path (`~/.takopi/takopi.toml`) |
+| `HOME_CONFIG_PATH` | Canonical config path (`~/.yee88/yee88.toml`) |
 | `RESERVED_COMMAND_IDS` | Set of reserved command IDs |
 | `read_config` | Read and parse TOML config file |
 | `write_config` | Atomically write config to TOML file |
@@ -198,7 +198,7 @@ Command handlers receive a `CommandContext` with:
 
 - the raw command text and parsed args
 - the original message + reply metadata
-- `config_path` for the active `takopi.toml` (when known)
+- `config_path` for the active `yee88.toml` (when known)
 - `plugin_config` from `[plugins.<id>]` (dict, defaults to `{}`)
 - `runtime` (engine/project resolution)
 - `executor` (send messages or run engines)
@@ -239,7 +239,7 @@ Most transports can delegate message handling to `handle_message()`. Use
 `TransportRuntime` to resolve messages and select a runner:
 
 ```py
-from takopi.api import (
+from yee88.api import (
     ExecBridgeConfig,
     IncomingMessage,
     RunningTask,

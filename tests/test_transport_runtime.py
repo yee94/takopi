@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from takopi.config import ProjectConfig, ProjectsConfig
-from takopi.context import RunContext
-from takopi.router import AutoRouter, RunnerEntry
-from takopi.runners.mock import Return, ScriptRunner
-from takopi.transport_runtime import TransportRuntime
+from yee88.config import ProjectConfig, ProjectsConfig
+from yee88.context import RunContext
+from yee88.router import AutoRouter, RunnerEntry
+from yee88.runners.mock import Return, ScriptRunner
+from yee88.transport_runtime import TransportRuntime
 
 
 def _make_runtime(*, project_default_engine: str | None = None) -> TransportRuntime:

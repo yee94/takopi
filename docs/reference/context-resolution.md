@@ -15,22 +15,22 @@ worktree-based runs via `@branch`.
 
 ## Config schema (relevant subset)
 
-All config lives in `~/.takopi/takopi.toml`.
+All config lives in `~/.yee88/yee88.toml`.
 See [Config](config.md) for the full reference.
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set default_engine "codex"
-    takopi config set default_project "z80"
-    takopi config set transport "telegram"
-    takopi config set transports.telegram.bot_token "..."
-    takopi config set transports.telegram.chat_id 123
-    takopi config set projects.z80.path "~/dev/z80"
-    takopi config set projects.z80.worktrees_dir ".worktrees"
-    takopi config set projects.z80.default_engine "codex"
-    takopi config set projects.z80.worktree_base "master"
-    takopi config set projects.z80.chat_id -123
+    yee88 config set default_engine "codex"
+    yee88 config set default_project "z80"
+    yee88 config set transport "telegram"
+    yee88 config set transports.telegram.bot_token "..."
+    yee88 config set transports.telegram.chat_id 123
+    yee88 config set projects.z80.path "~/dev/z80"
+    yee88 config set projects.z80.worktrees_dir ".worktrees"
+    yee88 config set projects.z80.default_engine "codex"
+    yee88 config set projects.z80.worktree_base "master"
+    yee88 config set projects.z80.chat_id -123
     ```
 
 === "toml"
@@ -61,7 +61,7 @@ Note on `worktrees_dir`:
   untracked directory (with nested git worktrees) unless you ignore it.
 - Options:
   - add `.worktrees/` to your repo `.gitignore`, or
-  - set `worktrees_dir` to a path outside the repo (e.g. `~/.takopi/worktrees/<alias>`).
+  - set `worktrees_dir` to a path outside the repo (e.g. `~/.yee88/worktrees/<alias>`).
   - add it to `.git/info/exclude` if you prefer a local-only ignore.
 
 Validation rules:
@@ -74,14 +74,14 @@ Validation rules:
 - `projects.<alias>.chat_id` must be unique and must not match `transports.telegram.chat_id`.
 - `transport` defaults to `"telegram"` when omitted; override per-run with `--transport`.
 
-## `takopi init`
+## `yee88 init`
 
-`takopi init <alias>` registers the current repo as a project alias.
+`yee88 init <alias>` registers the current repo as a project alias.
 
 Important behavior:
 
 - The stored `path` is the **main checkout** of the repo, even if you run
-  `takopi init` inside a worktree. Takopi resolves the repo root via the git
+  `yee88 init` inside a worktree. Takopi resolves the repo root via the git
   common dir and writes that path to `[projects.<alias>].path`.
 - `worktree_base` is set from the current repo using this resolution order:
   `origin/HEAD` → current branch → `master` → `main`.

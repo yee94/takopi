@@ -1,4 +1,4 @@
-from takopi.telegram.render import render_markdown, split_markdown_body
+from yee88.telegram.render import render_markdown, split_markdown_body
 
 
 def test_render_markdown_basic_entities() -> None:

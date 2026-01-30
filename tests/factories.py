@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from takopi.model import (
+from yee88.model import (
     Action,
     ActionEvent,
     ActionKind,

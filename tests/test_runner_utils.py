@@ -4,15 +4,15 @@ from typing import Any
 
 import pytest
 
-import takopi.runner as runner_module
-from takopi.model import (
+import yee88.runner as runner_module
+from yee88.model import (
     ActionEvent,
     CompletedEvent,
     ResumeToken,
     StartedEvent,
     TakopiEvent,
 )
-from takopi.runner import (
+from yee88.runner import (
     BaseRunner,
     JsonlRunState,
     JsonlSubprocessRunner,

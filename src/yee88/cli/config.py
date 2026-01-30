@@ -39,9 +39,9 @@ def _config_path_display(path: Path) -> str:
 def _fail_missing_config(path: Path) -> None:
     display = _config_path_display(path)
     if path.exists():
-        typer.echo(f"error: invalid takopi config at {display}", err=True)
+        typer.echo(f"error: invalid yee88 config at {display}", err=True)
     else:
-        typer.echo(f"error: missing takopi config at {display}", err=True)
+        typer.echo(f"error: missing yee88 config at {display}", err=True)
 
 
 def _resolve_config_path_override(value: Path | None) -> Path:
@@ -51,7 +51,7 @@ def _resolve_config_path_override(value: Path | None) -> Path:
 
 
 def _resolve_home_config_path() -> Path:
-    cli_module = sys.modules.get("takopi.cli")
+    cli_module = sys.modules.get("yee88.cli")
     if cli_module is not None:
         override = getattr(cli_module, "HOME_CONFIG_PATH", None)
         if override is not None:

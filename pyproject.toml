@@ -31,29 +31,29 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/banteg/takopi"
-Documentation = "https://takopi.dev/"
-Repository = "https://github.com/banteg/takopi"
-Issues = "https://github.com/banteg/takopi/issues"
+Homepage = "https://github.com/banteg/yee88"
+Documentation = "https://yee88.dev/"
+Repository = "https://github.com/banteg/yee88"
+Issues = "https://github.com/banteg/yee88/issues"
 
 [project.scripts]
-yee88 = "takopi.cli:main"
+yee88 = "yee88.cli:main"
 
-[project.entry-points."takopi.engine_backends"]
-codex = "takopi.runners.codex:BACKEND"
-claude = "takopi.runners.claude:BACKEND"
-opencode = "takopi.runners.opencode:BACKEND"
-pi = "takopi.runners.pi:BACKEND"
+[project.entry-points."yee88.engine_backends"]
+codex = "yee88.runners.codex:BACKEND"
+claude = "yee88.runners.claude:BACKEND"
+opencode = "yee88.runners.opencode:BACKEND"
+pi = "yee88.runners.pi:BACKEND"
 
-[project.entry-points."takopi.transport_backends"]
-telegram = "takopi.telegram.backend:BACKEND"
+[project.entry-points."yee88.transport_backends"]
+telegram = "yee88.telegram.backend:BACKEND"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/takopi"]
+packages = ["src/yee88"]
 
 [dependency-groups]
 dev = [
@@ -70,14 +70,14 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-addopts = ["--cov=takopi", "--cov-branch", "--cov-report=term-missing", "--cov-fail-under=81"]
+addopts = ["--cov=yee88", "--cov-branch", "--cov-report=term-missing", "--cov-fail-under=81"]
 testpaths = ["tests"]
 
 [tool.mutmut]
-paths_to_mutate = ["src/takopi"]
+paths_to_mutate = ["src/yee88"]
 tests_dir = ["tests"]
 pytest_add_cli_args = ["-q", "--no-cov"]
-do_not_mutate = ["src/takopi/cli/*"]
+do_not_mutate = ["src/yee88/cli/*"]
 
 [tool.ruff.lint]
 extend-select = ["B", "BLE001", "C4", "PERF", "RUF043", "S110", "SIM", "UP"]

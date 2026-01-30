@@ -11,7 +11,7 @@ If you’re trying to understand the *why*, use **[Explanation](../explanation/i
   - Message prefixes like `/<engine-id>`, `/<project-alias>`, and `@branch`
   - In-chat commands like `/cancel`, `/new`, `/ctx`, `/file …`, `/topic …`
 - [Configuration](config.md)
-  - `takopi.toml` options and defaults
+  - `yee88.toml` options and defaults
   - Telegram transport options (sessions, topics, files, voice transcription)
 
 ## Normative behavior
@@ -26,7 +26,7 @@ If you’re trying to understand the *why*, use **[Explanation](../explanation/i
 ## Plugins and extension contracts
 
 - [Plugin API](plugin-api.md)  
-  The **only** supported import surface for plugins: `takopi.api`
+  The **only** supported import surface for plugins: `yee88.api`
 - [Context resolution](context-resolution.md)  
   How Takopi resolves project + worktree context from directives, replies, and chat ids.
 
@@ -43,18 +43,18 @@ These are “engine adapter” implementation details: JSONL formats, mapping ru
 - Claude:
   - [runner.md](runners/claude/runner.md)
   - [stream-json-cheatsheet.md](runners/claude/stream-json-cheatsheet.md)
-  - [takopi-events.md](runners/claude/takopi-events.md)
+  - [yee88-events.md](runners/claude/yee88-events.md)
 - Codex:
   - [exec-json-cheatsheet.md](runners/codex/exec-json-cheatsheet.md)
-  - [takopi-events.md](runners/codex/takopi-events.md)
+  - [yee88-events.md](runners/codex/yee88-events.md)
 - OpenCode:
   - [runner.md](runners/opencode/runner.md)
   - [stream-json-cheatsheet.md](runners/opencode/stream-json-cheatsheet.md)
-  - [takopi-events.md](runners/opencode/takopi-events.md)
+  - [yee88-events.md](runners/opencode/yee88-events.md)
 - Pi:
   - [runner.md](runners/pi/runner.md)
   - [stream-json-cheatsheet.md](runners/pi/stream-json-cheatsheet.md)
-  - [takopi-events.md](runners/pi/takopi-events.md)
+  - [yee88-events.md](runners/pi/yee88-events.md)
 
 ## For LLM agents
 

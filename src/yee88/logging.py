@@ -28,7 +28,7 @@ _MIN_LEVEL = _LEVELS["info"]
 _PIPELINE_LEVEL_NAME = "debug"
 
 _suppress_below: ContextVar[int | None] = ContextVar(
-    "takopi_suppress_below", default=None
+    "yee88_suppress_below", default=None
 )
 _log_file_handle: TextIO | None = None
 

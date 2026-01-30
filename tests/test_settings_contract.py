@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from takopi.config import ConfigError
-from takopi.settings import TakopiSettings, validate_settings_data
+from yee88.config import ConfigError
+from yee88.settings import TakopiSettings, validate_settings_data
 
 
 def test_settings_strips_and_expands_transport_config(tmp_path: Path) -> None:
@@ -27,4 +27,4 @@ def test_settings_rejects_bool_chat_id(tmp_path: Path) -> None:
     }
 
     with pytest.raises(ConfigError, match="chat_id"):
-        validate_settings_data(data, config_path=tmp_path / "takopi.toml")
+        validate_settings_data(data, config_path=tmp_path / "yee88.toml")

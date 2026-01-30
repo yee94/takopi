@@ -6,12 +6,12 @@ Use `@branch` to run tasks in a dedicated git worktree for that branch.
 
 Add a `worktrees_dir` (and optionally a base branch) to the project:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set projects.happy-gadgets.path "~/dev/happy-gadgets"
-    takopi config set projects.happy-gadgets.worktrees_dir ".worktrees"
-    takopi config set projects.happy-gadgets.worktree_base "master"
+    yee88 config set projects.happy-gadgets.path "~/dev/happy-gadgets"
+    yee88 config set projects.happy-gadgets.worktrees_dir ".worktrees"
+    yee88 config set projects.happy-gadgets.worktree_base "master"
     ```
 
 === "toml"

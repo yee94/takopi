@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from takopi.backends import EngineConfig
-from takopi.config import ConfigError
-from takopi.events import EventFactory
-from takopi.model import ActionEvent, CompletedEvent, StartedEvent
-from takopi.runners.codex import (
+from yee88.backends import EngineConfig
+from yee88.config import ConfigError
+from yee88.events import EventFactory
+from yee88.model import ActionEvent, CompletedEvent, StartedEvent
+from yee88.runners.codex import (
     CodexRunner,
     _format_change_summary,
     _normalize_change_list,
@@ -21,7 +21,7 @@ from takopi.runners.codex import (
     find_exec_only_flag,
     translate_codex_event,
 )
-from takopi.schemas import codex as codex_schema
+from yee88.schemas import codex as codex_schema
 
 
 def test_codex_helper_functions() -> None:

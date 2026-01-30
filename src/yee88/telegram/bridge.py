@@ -36,7 +36,7 @@ __all__ = [
     "send_with_resume",
 ]
 
-CANCEL_CALLBACK_DATA = "takopi:cancel"
+CANCEL_CALLBACK_DATA = "yee88:cancel"
 CANCEL_MARKUP = {
     "inline_keyboard": [[{"text": "cancel", "callback_data": CANCEL_CALLBACK_DATA}]]
 }

@@ -19,22 +19,22 @@ Takopi lists plugin IDs **without importing plugin code**, then imports a plugin
 
 - it is selected by routing (engine/transport), or
 - it is invoked as a command, or
-- you explicitly request loading via `takopi plugins --load`.
+- you explicitly request loading via `yee88 plugins --load`.
 
-This keeps `takopi --help` fast and prevents a broken third-party plugin from bricking the CLI.
+This keeps `yee88 --help` fast and prevents a broken third-party plugin from bricking the CLI.
 
 ## Entrypoint rules (what Takopi expects)
 
 Takopi uses three entrypoint groups:
 
 ```toml
-[project.entry-points."takopi.engine_backends"]
+[project.entry-points."yee88.engine_backends"]
 myengine = "myengine.backend:BACKEND"
 
-[project.entry-points."takopi.transport_backends"]
+[project.entry-points."yee88.transport_backends"]
 mytransport = "mytransport.backend:BACKEND"
 
-[project.entry-points."takopi.command_backends"]
+[project.entry-points."yee88.command_backends"]
 mycommand = "mycommand.backend:BACKEND"
 ```
 
@@ -51,17 +51,17 @@ Rules:
 
 Plugin visibility can be restricted via:
 
-=== "takopi config"
+=== "yee88 config"
 
     ```sh
-    takopi config set plugins.enabled '["takopi-engine-acme", "takopi-transport-slack"]'
+    yee88 config set plugins.enabled '["yee88-engine-acme", "yee88-transport-slack"]'
     ```
 
 === "toml"
 
     ```toml
     [plugins]
-    enabled = ["takopi-engine-acme", "takopi-transport-slack"]
+    enabled = ["yee88-engine-acme", "yee88-transport-slack"]
     ```
 
 When set, Takopi filters by **distribution name** (package metadata), not by entrypoint name.
@@ -86,8 +86,8 @@ Reserved IDs include core chat and CLI command names such as `cancel`, `init`, a
 ## How to debug discovery and loading
 
 ```sh
-takopi plugins
-takopi plugins --load
+yee88 plugins
+yee88 plugins --load
 ```
 
 ## Related
