@@ -58,6 +58,7 @@ from .init import (
     run_init,
 )
 from .onboarding_cmd import chat_id, onboarding_paths
+from .topic import run_topic
 from .plugins import plugins_cmd
 from .run import (
     _default_engine_for_setup,
@@ -124,6 +125,26 @@ def init(
     )
 
 
+def topic(
+    project: str | None = typer.Argument(
+        None, help="Project alias (defaults to current directory name)."
+    ),
+    branch: str | None = typer.Option(
+        None, "--branch", "-b", help="Branch name (defaults to current git branch)."
+    ),
+    delete: bool = typer.Option(
+        False, "--delete", "-d", help="Delete topic binding instead of creating."
+    ),
+) -> None:
+    """Create or delete a Telegram topic bound to a project/branch."""
+    run_topic(
+        project=project,
+        branch=branch,
+        delete=delete,
+        config_path=None,
+    )
+
+
 def doctor() -> None:
     """Run configuration checks for the active transport."""
     setup_logging(debug=False, cache_logger_on_first_use=False)
@@ -168,6 +189,7 @@ def create_app() -> typer.Typer:
     config_app.command(name="set")(config_set)
     config_app.command(name="unset")(config_unset)
     app.command(name="init")(init)
+    app.command(name="topic")(topic)
     app.command(name="chat-id")(chat_id)
     app.command(name="doctor")(doctor)
     app.command(name="onboarding-paths")(onboarding_paths)
