@@ -13,6 +13,7 @@ extra_javascript = ["javascripts/hero-chat.js"]
 
 nav = [
   { "Home" = "index.md" },
+  { "中文用法指南" = "user-guide-zh.md" },
   { "Tutorials" = [
     { "Overview" = "tutorials/index.md" },
     { "Install" = "tutorials/install.md" },
