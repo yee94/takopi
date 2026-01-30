@@ -1,8 +1,21 @@
-# takopi
+# yee88
 
-🐙 *he just wants to help-pi*
+telegram bridge for codex, claude code, opencode, pi.
 
-telegram bridge for codex, claude code, opencode, pi. manage multiple projects and worktrees, stream progress, and resume sessions anywhere.
+## quickstart
+
+```sh
+# install
+uv tool install -U yee88
+
+# first run - follow the setup wizard
+yee88
+
+# in any git repo - create a topic and start
+cd ~/your-project
+yee88 topic init
+yee88
+```
 
 ## features
 
@@ -23,43 +36,20 @@ python 3.14+ (`uv python install 3.14`)
 
 at least one engine on PATH: `codex`, `claude`, `opencode`, or `pi`
 
-## install
-
-```sh
-uv tool install -U takopi
-```
-
-## setup
-
-run `takopi` and follow the setup wizard. it will help you:
-
-1. create a bot token via @BotFather
-2. pick a workflow (assistant, workspace, or handoff)
-3. connect your chat
-4. choose a default engine
-
-workflows configure conversation mode, topics, and resume lines automatically:
-
-- **assistant**: ongoing chat with auto-resume (recommended)
-- **workspace**: forum topics bound to repos/branches
-- **handoff**: reply-to-continue with terminal resume lines
-
 ## usage
 
 ```sh
 cd ~/dev/happy-gadgets
-takopi
+yee88
 ```
 
 send a message to your bot. prefix with `/codex`, `/claude`, `/opencode`, or `/pi` to pick an engine. reply to continue a thread.
 
-register a project with `takopi init happy-gadgets`, then target it from anywhere with `/happy-gadgets hard reset the timeline`.
+register a project with `yee88 init happy-gadgets`, then target it from anywhere with `/happy-gadgets hard reset the timeline`.
 
 mention a branch to run an agent in a dedicated worktree `/happy-gadgets @feat/memory-box freeze artifacts forever`.
 
-inspect or update settings with `takopi config list`, `takopi config get`, and `takopi config set`.
-
-see [takopi.dev](https://takopi.dev/) for configuration, worktrees, topics, file transfer, and more.
+inspect or update settings with `yee88 config list`, `yee88 config get`, and `yee88 config set`.
 
 ## plugins
 
