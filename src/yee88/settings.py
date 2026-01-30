@@ -288,7 +288,7 @@ class TakopiSettings(BaseSettings):
         return ProjectsConfig(
             projects=projects,
             default_project=default_project,
-            global_system_prompt=self.system_prompt,
+            system_prompt=self.system_prompt,
             chat_map=chat_map,
         )
 
