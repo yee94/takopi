@@ -1,5 +1,11 @@
 # changelog
 
+## v0.2.0 (2026-01-30)
+
+### changes
+
+- rename startup message from "takopi is ready" to "yee88 is ready"
+
 ## v0.21.4 (2026-01-22)
 
 ### changes

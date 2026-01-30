@@ -69,7 +69,7 @@ def _build_startup_message(
         )
         topics_label = f"enabled (scope={scope_label})"
     return (
-        f"\N{OCTOPUS} **takopi is ready**\n\n"
+        f"\N{OCTOPUS} **yee88 is ready**\n\n"
         f"default: `{runtime.default_engine}`  \n"
         f"engines: `{engine_list}`  \n"
         f"projects: `{project_list}`  \n"

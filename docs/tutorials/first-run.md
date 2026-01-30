@@ -16,7 +16,7 @@ takopi
 Takopi keeps running in your terminal. In Telegram, your bot will post a startup message like:
 
 !!! takopi "Takopi"
-    🐙 takopi is ready
+    🐙 yee88 is ready
 
     default: codex<br>
     engines: codex, claude<br>
@@ -165,7 +165,7 @@ The agent CLI isn't on your PATH. Install the CLI for the engine you're using (e
 
 **Bot doesn't respond at all**
 
-Check that Takopi is still running in your terminal. You should also see a startup message ("takopi is ready") from the bot in Telegram. If not, restart it.
+Check that Takopi is still running in your terminal. You should also see a startup message ("yee88 is ready") from the bot in Telegram. If not, restart it.
 
 **Resume doesn't work (starts a new conversation)**
 
