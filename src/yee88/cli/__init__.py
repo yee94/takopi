@@ -91,6 +91,8 @@ from .config import (
     config_set,
     config_unset,
 )
+from .cron import app as cron_app
+from .reload import reload_command
 
 
 def _load_settings_optional() -> tuple[TakopiSettings | None, Path | None]:
@@ -212,6 +214,8 @@ def create_app() -> typer.Typer:
     app.command(name="onboarding-paths")(onboarding_paths)
     app.command(name="plugins")(plugins_cmd)
     app.add_typer(config_app, name="config")
+    app.add_typer(cron_app, name="cron")
+    app.command(name="reload")(reload_command)
     app.callback()(app_main)
     for engine_id in _engine_ids_for_cli():
         help_text = f"Run with the {engine_id} engine."

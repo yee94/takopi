@@ -155,6 +155,32 @@ def test_format_ctx_status_includes_sessions(tmp_path: Path) -> None:
     assert "sessions: a, b" in text
 
 
+def test_format_ctx_status_includes_engine_and_model(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path)
+    runtime = cfg.runtime
+    snapshot = TopicThreadSnapshot(
+        chat_id=cfg.chat_id,
+        thread_id=1,
+        context=None,
+        sessions={},
+        topic_title=None,
+        default_engine="codex",
+    )
+    text = tg_context._format_ctx_status(
+        cfg=cfg,
+        runtime=runtime,
+        bound=None,
+        resolved=RunContext(project="alpha", branch="main"),
+        context_source="directives",
+        snapshot=snapshot,
+        chat_project=None,
+        engine="codex",
+        model="gpt-4.1-mini",
+    )
+    assert "engine: codex" in text
+    assert "model: gpt-4.1-mini" in text
+
+
 def test_merge_topic_context() -> None:
     assert tg_context._merge_topic_context(chat_project=None, bound=None) is None
     assert tg_context._merge_topic_context(

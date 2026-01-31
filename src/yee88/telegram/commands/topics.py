@@ -69,6 +69,14 @@ async def _handle_ctx_command(
             chat_id=msg.chat_id,
             ambient_context=ambient,
         )
+        engine = None
+        model = None
+        if snapshot is not None:
+            engine = snapshot.default_engine
+            if engine is not None:
+                override = await store.get_engine_override(tkey[0], tkey[1], engine)
+                if override is not None and override.model is not None:
+                    model = override.model
         text = _format_ctx_status(
             cfg=cfg,
             runtime=cfg.runtime,
@@ -77,6 +85,8 @@ async def _handle_ctx_command(
             context_source=resolved.context_source,
             snapshot=snapshot,
             chat_project=chat_project,
+            engine=engine,
+            model=model,
         )
         await reply(text=text)
         return

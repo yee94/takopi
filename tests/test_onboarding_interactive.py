@@ -111,7 +111,7 @@ def test_interactive_setup_writes_config(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(onboarding, "list_backends", lambda: [backend])
     monkeypatch.setattr(onboarding.shutil, "which", lambda _cmd: "/usr/bin/codex")
 
-    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True]))
+    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True, True]))
     monkeypatch.setattr(
         onboarding.questionary, "password", queue_answers(["123456789:ABCdef"])
     )
@@ -158,7 +158,7 @@ def test_interactive_setup_preserves_projects(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(onboarding, "list_backends", lambda: [backend])
     monkeypatch.setattr(onboarding.shutil, "which", lambda _cmd: "/usr/bin/codex")
 
-    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True, True]))
+    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True, True, True]))
     monkeypatch.setattr(
         onboarding.questionary, "password", queue_answers(["123456789:ABCdef"])
     )
@@ -230,7 +230,7 @@ def test_interactive_setup_recovers_from_malformed_toml(monkeypatch, tmp_path) -
     monkeypatch.setattr(onboarding, "list_backends", lambda: [backend])
     monkeypatch.setattr(onboarding.shutil, "which", lambda _cmd: "/usr/bin/codex")
 
-    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True, True]))
+    monkeypatch.setattr(onboarding, "confirm_prompt", queue_values([True, True, True, True]))
     monkeypatch.setattr(
         onboarding.questionary, "password", queue_answers(["123456789:ABCdef"])
     )

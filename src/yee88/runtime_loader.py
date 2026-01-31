@@ -24,6 +24,7 @@ class RuntimeSpec:
     projects: ProjectsConfig
     allowlist: list[str] | None
     plugin_configs: Mapping[str, Any] | None
+    engine_configs: Mapping[str, Any] | None = None
     watch_config: bool = False
 
     def to_runtime(self, *, config_path: Path | None) -> TransportRuntime:
@@ -33,6 +34,7 @@ class RuntimeSpec:
             allowlist=self.allowlist,
             config_path=config_path,
             plugin_configs=self.plugin_configs,
+            engine_configs=self.engine_configs,
             watch_config=self.watch_config,
         )
 
@@ -43,6 +45,7 @@ class RuntimeSpec:
             allowlist=self.allowlist,
             config_path=config_path,
             plugin_configs=self.plugin_configs,
+            engine_configs=self.engine_configs,
             watch_config=self.watch_config,
         )
 
@@ -203,5 +206,6 @@ def build_runtime_spec(
         projects=projects,
         allowlist=allowlist,
         plugin_configs=settings.plugins.model_extra,
+        engine_configs=settings.model_extra,
         watch_config=settings.watch_config,
     )

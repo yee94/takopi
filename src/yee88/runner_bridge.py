@@ -9,6 +9,7 @@ import anyio
 from .context import RunContext
 from .logging import bind_run_context, get_logger
 from .model import CompletedEvent, ResumeToken, StartedEvent, TakopiEvent
+from .runners.run_options import get_run_options
 from .presenter import Presenter
 from .markdown import render_event_cli
 from .runner import Runner
@@ -24,6 +25,13 @@ from .transport import (
 )
 
 logger = get_logger(__name__)
+
+
+def _effective_model(runner: Runner) -> str | None:
+    run_options = get_run_options()
+    if run_options is not None and run_options.model:
+        return run_options.model
+    return runner.model
 
 
 def _log_runner_event(evt: TakopiEvent) -> None:
@@ -165,6 +173,7 @@ class ProgressEdits:
         resume_formatter: Callable[[ResumeToken], str] | None = None,
         label: str = "working",
         context_line: str | None = None,
+        model: str | None = None,
     ) -> None:
         self.transport = transport
         self.presenter = presenter
@@ -177,6 +186,7 @@ class ProgressEdits:
         self.resume_formatter = resume_formatter
         self.label = label
         self.context_line = context_line
+        self.model = model
         self.event_seq = 0
         self.rendered_seq = 0
         self.signal_send, self.signal_recv = anyio.create_memory_object_stream(1)
@@ -196,6 +206,7 @@ class ProgressEdits:
             state = self.tracker.snapshot(
                 resume_formatter=self.resume_formatter,
                 context_line=self.context_line,
+                model=self.model,
             )
             rendered = self.presenter.render_progress(
                 state, elapsed_s=now - self.started_at, label=self.label
@@ -248,12 +259,14 @@ async def send_initial_progress(
     resume_formatter: Callable[[ResumeToken], str] | None = None,
     context_line: str | None = None,
     thread_id: ThreadId | None = None,
+    model: str | None = None,
 ) -> ProgressMessageState:
     last_rendered: RenderedMessage | None = None
 
     state = tracker.snapshot(
         resume_formatter=resume_formatter,
         context_line=context_line,
+        model=model,
     )
     initial_rendered = cfg.presenter.render_progress(
         state,
@@ -426,6 +439,7 @@ async def handle_message(
         resume_formatter=runner.format_resume,
         context_line=context_line,
         thread_id=incoming.thread_id,
+        model=_effective_model(runner),
     )
     progress_ref = progress_state.ref
 
@@ -440,6 +454,7 @@ async def handle_message(
         last_rendered=progress_state.last_rendered,
         resume_formatter=runner.format_resume,
         context_line=context_line,
+        model=_effective_model(runner),
     )
 
     running_task: RunningTask | None = None
@@ -499,6 +514,7 @@ async def handle_message(
         state = progress_tracker.snapshot(
             resume_formatter=runner.format_resume,
             context_line=context_line,
+            model=_effective_model(runner),
         )
         final_rendered = cfg.presenter.render_final(
             state,
@@ -535,6 +551,7 @@ async def handle_message(
         state = progress_tracker.snapshot(
             resume_formatter=runner.format_resume,
             context_line=context_line,
+            model=_effective_model(runner),
         )
         final_rendered = cfg.presenter.render_progress(
             state,
@@ -589,6 +606,7 @@ async def handle_message(
     state = progress_tracker.snapshot(
         resume_formatter=runner.format_resume,
         context_line=context_line,
+        model=_effective_model(runner),
     )
     final_rendered = cfg.presenter.render_final(
         state,

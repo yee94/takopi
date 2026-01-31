@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from contextlib import contextmanager
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -43,6 +44,8 @@ from ..transports import SetupResult
 from .api_models import User
 from .client import TelegramClient, TelegramRetryAfter
 from .topics import _validate_topics_setup_for
+
+import yee88
 
 __all__ = [
     "ChatInfo",
@@ -929,6 +932,42 @@ async def step_save_config(ui: UI, svc: Services, state: OnboardingState) -> Non
     ui.print(Text("✓ setup complete. starting yee88...", style="green"))
 
 
+async def step_install_skill(ui: UI, _svc: Services, _state: OnboardingState) -> None:
+    install = await ui.confirm(
+        "install yee88 skill for AI agents (opencode, claude-code, etc.)?",
+        default=True,
+    )
+    if not install:
+        ui.print("  skipped skill installation")
+        return
+
+    skills_path = Path(yee88.__file__).parent / "skills"
+    if not skills_path.exists():
+        ui.print(f"  warning: skills not found at {skills_path}")
+        return
+
+    ui.print("  installing yee88 skill...")
+    try:
+        result = subprocess.run(
+            ["npx", "skills", "add", str(skills_path), "-g", "--all", "-y"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            ui.print("  ✓ skill installed successfully")
+        else:
+            ui.print(f"  warning: skill installation failed (exit code {result.returncode})")
+            if result.stderr:
+                ui.print(f"  error: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        ui.print("  warning: skill installation timed out")
+    except FileNotFoundError:
+        ui.print("  warning: npx not found. install node.js to use skills.")
+    except Exception as exc:
+        ui.print(f"  warning: skill installation failed: {exc}")
+
+
 def always_true(_state: OnboardingState) -> bool:
     return True
 
@@ -947,6 +986,7 @@ STEPS: list[OnboardingStep] = [
     OnboardingStep("connect chat", 3, step_capture_chat),
     OnboardingStep("default engine", 4, step_default_engine),
     OnboardingStep("save config", 5, step_save_config),
+    OnboardingStep("install skill", 6, step_install_skill),
 ]
 
 

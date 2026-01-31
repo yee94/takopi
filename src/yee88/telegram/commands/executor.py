@@ -40,6 +40,10 @@ class _ResumeLineProxy:
     def engine(self) -> str:
         return self.runner.engine
 
+    @property
+    def model(self) -> str | None:
+        return self.runner.model
+
     def is_resume_line(self, line: str) -> bool:
         return self.runner.is_resume_line(line)
 
@@ -126,7 +130,7 @@ async def _send_runner_unavailable(
 ) -> None:
     tracker = ProgressTracker(engine=runner.engine)
     tracker.set_resume(resume_token)
-    state = tracker.snapshot(resume_formatter=runner.format_resume)
+    state = tracker.snapshot(resume_formatter=runner.format_resume, model=runner.model)
     message = exec_cfg.presenter.render_final(
         state,
         elapsed_s=0.0,

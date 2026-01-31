@@ -52,6 +52,7 @@ class TransportRuntime:
         "_allowlist",
         "_config_path",
         "_plugin_configs",
+        "_engine_configs",
         "_watch_config",
     )
 
@@ -63,6 +64,7 @@ class TransportRuntime:
         allowlist: Iterable[str] | None = None,
         config_path: Path | None = None,
         plugin_configs: Mapping[str, Any] | None = None,
+        engine_configs: Mapping[str, Any] | None = None,
         watch_config: bool = False,
     ) -> None:
         self._apply(
@@ -71,6 +73,7 @@ class TransportRuntime:
             allowlist=allowlist,
             config_path=config_path,
             plugin_configs=plugin_configs,
+            engine_configs=engine_configs,
             watch_config=watch_config,
         )
 
@@ -82,6 +85,7 @@ class TransportRuntime:
         allowlist: Iterable[str] | None = None,
         config_path: Path | None = None,
         plugin_configs: Mapping[str, Any] | None = None,
+        engine_configs: Mapping[str, Any] | None = None,
         watch_config: bool = False,
     ) -> None:
         self._apply(
@@ -90,6 +94,7 @@ class TransportRuntime:
             allowlist=allowlist,
             config_path=config_path,
             plugin_configs=plugin_configs,
+            engine_configs=engine_configs,
             watch_config=watch_config,
         )
 
@@ -101,6 +106,7 @@ class TransportRuntime:
         allowlist: Iterable[str] | None,
         config_path: Path | None,
         plugin_configs: Mapping[str, Any] | None,
+        engine_configs: Mapping[str, Any] | None,
         watch_config: bool,
     ) -> None:
         self._router = router
@@ -108,6 +114,7 @@ class TransportRuntime:
         self._allowlist = normalize_allowlist(allowlist)
         self._config_path = config_path
         self._plugin_configs = dict(plugin_configs or {})
+        self._engine_configs = dict(engine_configs or {})
         self._watch_config = watch_config
 
     @property
@@ -148,6 +155,10 @@ class TransportRuntime:
         return tuple(project.alias for project in self._projects.projects.values())
 
     @property
+    def projects(self) -> ProjectsConfig:
+        return self._projects
+
+    @property
     def allowlist(self) -> set[str] | None:
         return self._allowlist
 
@@ -170,6 +181,16 @@ class TransportRuntime:
             raise ConfigError(
                 f"Invalid `plugins.{plugin_id}` in {path}; expected a table."
             )
+        return dict(raw)
+
+    def engine_config(self, engine_id: str) -> dict[str, Any]:
+        if not self._engine_configs:
+            return {}
+        raw = self._engine_configs.get(engine_id)
+        if raw is None:
+            return {}
+        if not isinstance(raw, dict):
+            return {}
         return dict(raw)
 
     def resolve_message(

@@ -244,6 +244,8 @@ class MarkdownFormatter:
             lines.append(state.context_line)
         if state.resume_line:
             lines.append(state.resume_line)
+        if state.model:
+            lines.append(f"`model: {state.model}`")
         if not lines:
             return None
         return HARD_BREAK.join(lines)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import re
 from typing import TYPE_CHECKING
 
 from ...context import RunContext
@@ -8,7 +10,7 @@ from ..engine_overrides import EngineOverrides, resolve_override_value
 from ..files import split_command_args
 from ..topic_state import TopicStateStore
 from ..topics import _topic_key
-from ..types import TelegramIncomingMessage
+from ..types import TelegramCallbackQuery, TelegramIncomingMessage
 from .overrides import (
     ENGINE_SOURCE_LABELS,
     OVERRIDE_SOURCE_LABELS,
@@ -22,10 +24,105 @@ from .reply import make_reply
 if TYPE_CHECKING:
     from ..bridge import TelegramBridgeConfig
 
+# Callback data prefix for model selection
+MODEL_SELECT_CALLBACK_PREFIX = "yee88:model_select:"
+
 MODEL_USAGE = (
-    "usage: `/model`, `/model set <model>`, "
+    "usage: `/model`, `/model status`, `/model set <model>`, "
     "`/model set <engine> <model>`, or `/model clear [engine]`"
 )
+
+
+async def _get_opencode_models() -> list[str]:
+    """Fetch available models from opencode CLI."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "opencode",
+            "models",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        if proc.returncode != 0:
+            return []
+        models = stdout.decode().strip().split("\n")
+        return [m.strip() for m in models if m.strip()]
+    except Exception:
+        return []
+
+
+async def _send_model_selector(
+    cfg: TelegramBridgeConfig,
+    msg: TelegramIncomingMessage,
+    engine: str,
+    models: list[str],
+) -> None:
+    """Send a copyable model list for selection."""
+    if not models:
+        await cfg.bot.send_message(
+            chat_id=msg.chat_id,
+            text="No models available.",
+            reply_to_message_id=msg.message_id,
+            message_thread_id=msg.thread_id,
+        )
+        return
+
+    header = f"Models for {engine}:\n\n"
+    max_len = 4000
+    chunks: list[str] = []
+    current = header
+
+    for model in models:
+        line = f"<code>/model set {model}</code>\n"
+        if len(current) + len(line) > max_len:
+            chunks.append(current.rstrip())
+            current = line
+        else:
+            current += line
+
+    if current.strip():
+        chunks.append(current.rstrip())
+
+    for i, chunk in enumerate(chunks):
+        await cfg.bot.send_message(
+            chat_id=msg.chat_id,
+            text=chunk,
+            reply_to_message_id=msg.message_id if i == 0 else None,
+            message_thread_id=msg.thread_id,
+            parse_mode="HTML",
+        )
+
+
+async def handle_model_select_callback(
+    cfg: TelegramBridgeConfig,
+    query: TelegramCallbackQuery,
+) -> None:
+    """Handle model selection from inline keyboard."""
+    if not query.data:
+        return
+
+    # Parse callback data: yee88:model_select:<engine>:<model>
+    prefix = MODEL_SELECT_CALLBACK_PREFIX
+    if not query.data.startswith(prefix):
+        return
+
+    data = query.data[len(prefix):]
+    if ":" not in data:
+        return
+
+    engine, model = data.split(":", 1)
+
+    # Answer the callback query
+    await cfg.bot.answer_callback_query(
+        callback_query_id=query.callback_query_id,
+        text=f"Setting model to {model}...",
+    )
+
+    # Send the model set command as a new message
+    await cfg.bot.send_message(
+        chat_id=query.chat_id,
+        text=f"/model set {engine} {model}",
+    )
 
 
 async def _handle_model_command(
@@ -46,10 +143,39 @@ async def _handle_model_command(
         else None
     )
     tokens = split_command_args(args_text)
-    action = tokens[0].lower() if tokens else "show"
+    action = tokens[0].lower() if tokens else ""
     engine_ids = {engine.lower() for engine in cfg.runtime.engine_ids}
 
-    if action in {"show", ""}:
+    if action == "":
+        selection = await resolve_engine_selection(
+            cfg,
+            msg,
+            ambient_context=ambient_context,
+            topic_store=topic_store,
+            chat_prefs=chat_prefs,
+            topic_key=tkey,
+        )
+        if selection is None:
+            return
+        engine, _ = selection
+
+        if engine == "opencode":
+            models = await _get_opencode_models()
+            opencode_cfg = cfg.runtime.engine_config("opencode")
+            model_filter = opencode_cfg.get("model_filter")
+            if model_filter and isinstance(model_filter, str):
+                try:
+                    pattern = re.compile(model_filter, re.IGNORECASE)
+                    models = [m for m in models if pattern.search(m)]
+                except re.error:
+                    pass
+            if models:
+                await _send_model_selector(cfg, msg, engine, models)
+                return
+
+        action = "status"
+
+    if action == "status":
         selection = await resolve_engine_selection(
             cfg,
             msg,
@@ -61,6 +187,7 @@ async def _handle_model_command(
         if selection is None:
             return
         engine, engine_source = selection
+
         topic_override = None
         if tkey is not None and topic_store is not None:
             topic_override = await topic_store.get_engine_override(

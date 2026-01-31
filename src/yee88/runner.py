@@ -698,6 +698,7 @@ class JsonlSubprocessRunner(BaseRunner):
 
 class Runner(Protocol):
     engine: str
+    model: str | None
 
     def is_resume_line(self, line: str) -> bool: ...
 

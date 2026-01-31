@@ -6,11 +6,17 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import signal
+
 import anyio
 from anyio.abc import TaskGroup
 
-from ..config import ConfigError
+from ..cli.reload import request_reload
+from ..config import ConfigError, HOME_CONFIG_PATH
 from ..config_watch import ConfigReload, watch_config as watch_config_changes
+from ..cron.manager import CronManager
+from ..cron.scheduler import CronScheduler
+from ..cron.models import CronJob
 from ..commands import list_command_ids
 from ..directives import DirectiveError
 from ..logging import get_logger
@@ -25,6 +31,10 @@ from ..context import RunContext
 from ..ids import RESERVED_CHAT_COMMANDS
 from .bridge import CANCEL_CALLBACK_DATA, TelegramBridgeConfig, send_plain
 from .commands.cancel import handle_callback_cancel, handle_cancel
+from .commands.model import (
+    MODEL_SELECT_CALLBACK_PREFIX,
+    handle_model_select_callback,
+)
 from .commands.file_transfer import FILE_PUT_USAGE
 from .commands.handlers import (
     dispatch_command,
@@ -1066,6 +1076,47 @@ async def run_main_loop(
 
                 tg.start_soon(run_config_watch)
 
+            if config_path is not None:
+                cron_manager = CronManager(config_path.parent)
+
+                async def _execute_cron_job(job: CronJob) -> None:
+                    try:
+                        context = RunContext(project=job.project) if job.project else None
+                        await run_job(
+                            chat_id=cfg.chat_id,
+                            user_msg_id=0,
+                            text=job.message,
+                            resume_token=None,
+                            context=context,
+                            thread_id=None,
+                            force_hide_resume_line=True,
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            "cron.job_failed",
+                            job_id=job.id,
+                            error=str(exc),
+                        )
+
+                async def run_cron_scheduler() -> None:
+                    scheduler = CronScheduler(cron_manager, _execute_cron_job)
+                    await scheduler.start()
+
+                tg.start_soon(run_cron_scheduler)
+
+            async def run_signal_watcher() -> None:
+                if not hasattr(signal, "SIGHUP"):
+                    return
+                with anyio.open_signal_receiver(signal.SIGHUP) as signals:
+                    async for signum in signals:
+                        if signum == signal.SIGHUP:
+                            logger.info("reload.signal_received", signal="SIGHUP")
+                            request_reload()
+                            tg.cancel_scope.cancel()
+                            return
+
+            tg.start_soon(run_signal_watcher)
+
             def wrap_on_thread_known(
                 base_cb: Callable[[ResumeToken, anyio.Event], Awaitable[None]] | None,
                 topic_key: tuple[int, int] | None,
@@ -1104,6 +1155,7 @@ async def run_main_loop(
                 | None = None,
                 engine_override: EngineId | None = None,
                 progress_ref: MessageRef | None = None,
+                force_hide_resume_line: bool = False,
             ) -> None:
                 topic_key = (
                     (chat_id, thread_id)
@@ -1115,7 +1167,7 @@ async def run_main_loop(
                     else None
                 )
                 stateful_mode = topic_key is not None or chat_session_key is not None
-                show_resume_line = should_show_resume_line(
+                show_resume_line = False if force_hide_resume_line else should_show_resume_line(
                     show_resume_line=cfg.show_resume_line,
                     stateful_mode=stateful_mode,
                     context=context,
@@ -1807,6 +1859,14 @@ async def run_main_loop(
                             update,
                             state.running_tasks,
                             scheduler,
+                        )
+                    elif update.data and update.data.startswith(
+                        MODEL_SELECT_CALLBACK_PREFIX
+                    ):
+                        tg.start_soon(
+                            handle_model_select_callback,
+                            cfg,
+                            update,
                         )
                     else:
                         tg.start_soon(

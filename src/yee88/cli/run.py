@@ -16,6 +16,7 @@ from ..config import ConfigError, load_or_init_config
 from ..engines import get_backend
 from ..ids import RESERVED_CHAT_COMMANDS
 from ..lockfile import LockError, LockHandle, acquire_lock, token_fingerprint
+from .reload import do_exec_restart, install_reload_handler, should_reload
 from ..logging import get_logger, setup_logging
 from ..runtime_loader import build_runtime_spec, resolve_plugins_allowlist
 from ..settings import TakopiSettings, load_settings, load_settings_if_exists
@@ -299,6 +300,7 @@ def _run_auto_router(
         )
         lock_handle = acquire_config_lock_fn(config_path, lock_token)
         runtime = spec.to_runtime(config_path=config_path)
+        install_reload_handler()
         transport_backend.build_and_run(
             final_notify=final_notify,
             default_engine_override=default_engine_override,
@@ -306,6 +308,11 @@ def _run_auto_router(
             transport_config=transport_config,
             runtime=runtime,
         )
+        if should_reload():
+            if lock_handle is not None:
+                lock_handle.release()
+                lock_handle = None
+            do_exec_restart()
     except ConfigError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc

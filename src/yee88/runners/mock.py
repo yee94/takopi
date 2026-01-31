@@ -60,6 +60,7 @@ def _resume_token(engine: EngineId, value: str | None) -> ResumeToken:
 
 class MockRunner(SessionLockMixin, ResumeTokenMixin, Runner):
     engine: EngineId
+    model: str | None
 
     def __init__(
         self,
@@ -69,8 +70,10 @@ class MockRunner(SessionLockMixin, ResumeTokenMixin, Runner):
         engine: EngineId = ENGINE,
         resume_value: str | None = None,
         title: str | None = None,
+        model: str | None = None,
     ) -> None:
         self.engine = engine
+        self.model = model
         self._events = list(events or [])
         self._answer = answer
         self._resume_value = resume_value

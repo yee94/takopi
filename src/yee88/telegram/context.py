@@ -107,6 +107,8 @@ def _format_ctx_status(
     context_source: str,
     snapshot: TopicThreadSnapshot | None,
     chat_project: str | None,
+    engine: str | None = None,
+    model: str | None = None,
 ) -> str:
     lines = [
         f"topics: enabled (scope={_topics_scope_label(cfg)})",
@@ -125,6 +127,10 @@ def _format_ctx_status(
     if snapshot is not None and snapshot.sessions:
         sessions = ", ".join(sorted(snapshot.sessions))
     lines.append(f"sessions: {sessions or 'none'}")
+    if engine is not None:
+        lines.append(f"engine: {engine}")
+    if model is not None:
+        lines.append(f"model: {model}")
     return "\n".join(lines)
 
 

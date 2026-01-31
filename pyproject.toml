@@ -8,6 +8,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.14"
 dependencies = [
   "anyio>=4.12.0",
+  "croniter>=2.0.0",
   "httpx>=0.28.1",
   "markdown-it-py",
   "msgspec>=0.20.0",
@@ -54,6 +55,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/yee88"]
+include = ["src/yee88/skills/**/*.md"]
 
 [dependency-groups]
 dev = [
