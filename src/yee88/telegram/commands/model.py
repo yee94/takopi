@@ -29,7 +29,7 @@ MODEL_SELECT_CALLBACK_PREFIX = "yee88:model_select:"
 
 MODEL_USAGE = (
     "usage: `/model`, `/model status`, `/model set <model>`, "
-    "`/model set <engine> <model>`, or `/model clear [engine]`"
+    "`/model set <engine> <model>`, `/model clear [engine]`, or `/model reset`"
 )
 
 
@@ -337,6 +337,47 @@ async def _handle_model_command(
             await reply(text="topic model override cleared (using chat default).")
             return
         await reply(text="chat model override cleared.")
+        return
+
+    if action == "reset":
+        if len(tokens) > 1:
+            await reply(text=MODEL_USAGE)
+            return
+        if not await require_admin_or_private(
+            cfg,
+            msg,
+            missing_sender="cannot verify sender for model overrides.",
+            failed_member="failed to verify model override permissions.",
+            denied="changing model overrides is restricted to group admins.",
+        ):
+            return
+        
+        cleared_engines = []
+        for engine in engine_ids:
+            scope = await apply_engine_override(
+                reply=reply,
+                tkey=tkey,
+                topic_store=topic_store,
+                chat_prefs=chat_prefs,
+                chat_id=msg.chat_id,
+                engine=engine,
+                update=lambda current: EngineOverrides(
+                    model=None,
+                    reasoning=current.reasoning if current is not None else None,
+                ),
+                topic_unavailable="topic model overrides are unavailable.",
+                chat_unavailable="chat model overrides are unavailable (no config path).",
+            )
+            if scope is not None:
+                cleared_engines.append(engine)
+        
+        if cleared_engines:
+            engines_list = ", ".join(cleared_engines)
+            await reply(
+                text=f"all model overrides reset to default for engines: {engines_list}"
+            )
+        else:
+            await reply(text="no model overrides to reset.")
         return
 
     await reply(text=MODEL_USAGE)
