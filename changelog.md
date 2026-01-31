@@ -1,5 +1,19 @@
 # changelog
 
+## v0.6.0 (2026-01-31)
+
+### features
+
+- add one-time task execution support in cron
+
+### docs
+
+- update yee88 skill documentation
+
+### changes
+
+- update system prompt wording
+
 ## v0.2.0 (2026-01-30)
 
 ### changes
