@@ -333,6 +333,9 @@ class PiRunner(ResumeTokenMixin, JsonlSubprocessRunner):
         if model:
             args.extend(["--model", model])
         args.extend(["--session", state.resume.value])
+        # Apply system prompt as prefix only on first run (when resume is None)
+        if resume is None and run_options is not None and run_options.system:
+            prompt = f"{run_options.system}\n\n---\n\n{prompt}"
         args.append(self._sanitize_prompt(prompt))
         return args
 

@@ -335,9 +335,9 @@ class OpenCodeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
             model = run_options.model
         if model is not None:
             args.extend(["--model", str(model)])
-        # Apply system prompt as prefix if provided
-        if run_options is not None and run_options.system:
-            prompt = f"{run_options.system}\n\n{prompt}"
+        # Apply system prompt as prefix only on first run (when resume is None)
+        if resume is None and run_options is not None and run_options.system:
+            prompt = f"{run_options.system}\n\n---\n\n{prompt}"
         args.extend(["--", prompt])
         return args
 

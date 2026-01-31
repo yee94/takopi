@@ -311,6 +311,9 @@ class ClaudeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
             args.extend(["--allowedTools", allowed_tools])
         if self.dangerously_skip_permissions is True:
             args.append("--dangerously-skip-permissions")
+        # Apply system prompt as prefix only on first run (when resume is None)
+        if resume is None and run_options is not None and run_options.system:
+            prompt = f"{run_options.system}\n\n---\n\n{prompt}"
         args.append("--")
         args.append(prompt)
         return args

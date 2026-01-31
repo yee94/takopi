@@ -1,5 +1,11 @@
 # changelog
 
+## v0.6.2 (2026-01-31)
+
+### changes
+
+- optimize system_prompt handling: only prepend on first run to save tokens
+
 ## v0.6.0 (2026-01-31)
 
 ### features

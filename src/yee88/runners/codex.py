@@ -405,6 +405,7 @@ class CodexRunner(ResumeTokenMixin, JsonlSubprocessRunner):
     engine: EngineId = ENGINE
     resume_re = _RESUME_RE
     logger = logger
+    model: str | None = None
 
     def __init__(
         self,
@@ -452,6 +453,19 @@ class CodexRunner(ResumeTokenMixin, JsonlSubprocessRunner):
         else:
             args.append("-")
         return args
+
+    def stdin_payload(
+        self,
+        prompt: str,
+        resume: ResumeToken | None,
+        *,
+        state: Any,
+    ) -> bytes | None:
+        run_options = get_run_options()
+        # Apply system prompt as prefix only on first run (when resume is None)
+        if resume is None and run_options is not None and run_options.system:
+            prompt = f"{run_options.system}\n\n---\n\n{prompt}"
+        return prompt.encode()
 
     def new_state(self, prompt: str, resume: ResumeToken | None) -> CodexRunState:
         return CodexRunState(factory=EventFactory(ENGINE))
