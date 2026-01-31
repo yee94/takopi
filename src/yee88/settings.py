@@ -145,8 +145,7 @@ class TakopiSettings(BaseSettings):
     default_project: NonEmptyStr | None = None
     system_prompt: str | None = (
         "你是我的专业秘书，请用中文回复。"
-        "每次会话结束以后，都要叫我老板，用简短、调皮但不轻浮的回复，告诉我你的任务结果！",
-        "返回格式给 Markdown Table"
+        "每次会话结束以后，都要叫我老板，用简短、调皮但不轻浮的回复，告诉我你的任务结果！"
     )
     projects: dict[str, ProjectSettings] = Field(default_factory=dict)
 
