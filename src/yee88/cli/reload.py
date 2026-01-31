@@ -18,6 +18,10 @@ _reload_requested = False
 
 
 def _get_exec_args() -> tuple[str, list[str]]:
+    import shutil
+    yee88_path = shutil.which("yee88")
+    if yee88_path:
+        return yee88_path, ["yee88"]
     executable = sys.executable
     args = [executable, "-m", "yee88"]
     return executable, args

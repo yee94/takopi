@@ -1098,9 +1098,10 @@ async def run_main_loop(
                             error=str(exc),
                         )
 
+                cron_scheduler = CronScheduler(cron_manager, _execute_cron_job, tg)
+
                 async def run_cron_scheduler() -> None:
-                    scheduler = CronScheduler(cron_manager, _execute_cron_job)
-                    await scheduler.start()
+                    await cron_scheduler.start()
 
                 tg.start_soon(run_cron_scheduler)
 

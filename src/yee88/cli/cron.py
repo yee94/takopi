@@ -9,12 +9,31 @@ import typer
 from ..config import HOME_CONFIG_PATH
 from ..cron.manager import CronManager
 from ..cron.models import CronJob
+from ..settings import load_settings_if_exists
+from ..engines import list_backend_ids
 
 app = typer.Typer(help="Manage yee88 cron jobs")
 
 
 def get_cron_manager() -> CronManager:
     return CronManager(HOME_CONFIG_PATH.parent)
+
+
+def _validate_project(project: str) -> None:
+    if not project:
+        return
+    result = load_settings_if_exists()
+    if result is None:
+        raise ValueError(f"未找到配置文件，无法验证项目: {project}")
+    settings, config_path = result
+    engine_ids = list_backend_ids()
+    projects_config = settings.to_projects_config(config_path=config_path, engine_ids=engine_ids)
+    if project.lower() not in projects_config.projects:
+        available = list(projects_config.projects.keys())
+        if available:
+            raise ValueError(f"未知项目: {project}。可用项目: {', '.join(available)}")
+        else:
+            raise ValueError(f"未知项目: {project}。请先使用 'yee88 init' 注册项目")
 
 
 def _parse_one_time(schedule: str) -> str:
@@ -58,14 +77,15 @@ def add(
     id: str = typer.Argument(...),
     schedule: str = typer.Argument(...),
     message: str = typer.Argument(...),
-    project: str = typer.Option(..., "--project", "-p"),
+    project: str = typer.Option("", "--project", "-p", help="项目别名（可选，如 takopi）"),
     one_time: bool = typer.Option(False, "--one-time", "-o", help="一次性任务，执行后自动删除"),
 ):
     try:
         manager = get_cron_manager()
         manager.load()
 
-        # 验证并转换一次性任务时间格式
+        _validate_project(project)
+
         if one_time:
             schedule = _parse_one_time(schedule)
 
@@ -86,7 +106,8 @@ def add(
         else:
             typer.echo(f"✅ 已添加定时任务: {id}")
             typer.echo(f"   时间: {schedule}")
-        typer.echo(f"   路径: {project}")
+        if project:
+            typer.echo(f"   项目: {project}")
         typer.echo(f"   消息: {message}")
 
     except ValueError as e:
