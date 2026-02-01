@@ -525,12 +525,38 @@ yee88 cron run <task-id>
    - 执行后自动从列表中删除
    - 无法对一次性任务使用 enable/disable（执行前自动删除）
 
+### 10. 会话接力（Handoff）
+
+将当前 OpenCode 会话上下文发送到 Telegram，方便在手机上继续对话。
+
+```bash
+yee88 handoff
+```
+
+功能：
+- 自动列出当前项目的最近会话（带话题名称）
+- 选择会话后，创建新的 Telegram Topic
+- 将会话上下文和最近消息发送到 Topic
+- 在 Telegram 中直接继续对话
+
+选项：
+- `--session, -s`: 指定会话 ID（默认交互选择）
+- `--limit, -n`: 包含的消息数量（默认 3）
+- `--project, -p`: 项目名称
+
+示例：
+```bash
+yee88 handoff
+yee88 handoff -s ses_abc123 -n 5
+```
+
 ## 完整命令速查表
 
 | 命令 | 说明 |
 |------|------|
 | `yee88` | 启动 yee88 |
 | `yee88 init <alias>` | 注册项目 |
+| `yee88 handoff` | 会话接力到 Telegram |
 | `yee88 config path` | 查看配置路径 |
 | `yee88 config list` | 列出配置 |
 | `yee88 config get <key>` | 获取配置项 |
