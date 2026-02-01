@@ -92,6 +92,7 @@ from .config import (
     config_unset,
 )
 from .cron import app as cron_app
+from .handoff import app as handoff_app
 from .reload import reload_command
 
 
@@ -215,6 +216,7 @@ def create_app() -> typer.Typer:
     app.command(name="plugins")(plugins_cmd)
     app.add_typer(config_app, name="config")
     app.add_typer(cron_app, name="cron")
+    app.add_typer(handoff_app, name="handoff")
     app.command(name="reload")(reload_command)
     app.callback()(app_main)
     for engine_id in _engine_ids_for_cli():

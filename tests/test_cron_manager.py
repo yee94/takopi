@@ -355,7 +355,6 @@ class TestGetDueJobs:
         """Test that one-time jobs are removed after they become due."""
         manager = CronManager(tmp_config_dir)
         
-        # Create a one-time job in the past
         past_time = datetime.now() - timedelta(hours=1)
         job = CronJob(
             id="past-one-time",
@@ -365,14 +364,59 @@ class TestGetDueJobs:
             enabled=True,
             one_time=True,
         )
-        manager.jobs.append(job)  # Add directly to avoid validation
+        manager.jobs.append(job)
         manager.save()
         
-        # Get due jobs - this should return the job and mark it for removal
         due_jobs = manager.get_due_jobs()
         
-        # The job should be in due_jobs
         assert any(j.id == "past-one-time" for j in due_jobs)
-        
-        # After get_due_jobs, the one-time job should be removed
         assert not any(j.id == "past-one-time" for j in manager.jobs)
+
+    def test_first_run_job_triggers_if_scheduled_today(self, tmp_config_dir: Path) -> None:
+        """Test that a job with no last_run triggers if scheduled earlier today."""
+        manager = CronManager(tmp_config_dir, timezone="Asia/Shanghai")
+        
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+        past_hour = now.hour - 1 if now.hour > 0 else 23
+        schedule = f"0 {past_hour} * * *"
+        
+        job = CronJob(
+            id="first-run-test",
+            schedule=schedule,
+            message="First run test",
+            project="",
+            enabled=True,
+            last_run="",
+        )
+        manager.jobs.append(job)
+        manager.save()
+        
+        due_jobs = manager.get_due_jobs()
+        
+        if now.hour > 0:
+            assert any(j.id == "first-run-test" for j in due_jobs), \
+                f"Job scheduled for {past_hour}:00 should trigger at {now.hour}:{now.minute}"
+            triggered_job = next(j for j in manager.jobs if j.id == "first-run-test")
+            assert triggered_job.last_run != "", "last_run should be set after triggering"
+
+    def test_job_with_last_run_triggers_correctly(self, tmp_config_dir: Path) -> None:
+        """Test that a job with last_run triggers at next scheduled time."""
+        manager = CronManager(tmp_config_dir, timezone="Asia/Shanghai")
+        
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+        two_hours_ago = now - timedelta(hours=2)
+        
+        job = CronJob(
+            id="recurring-test",
+            schedule="* * * * *",
+            message="Every minute",
+            project="",
+            enabled=True,
+            last_run=two_hours_ago.isoformat(),
+        )
+        manager.jobs.append(job)
+        manager.save()
+        
+        due_jobs = manager.get_due_jobs()
+        
+        assert any(j.id == "recurring-test" for j in due_jobs)

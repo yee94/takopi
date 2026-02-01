@@ -152,15 +152,19 @@ class CronManager:
                         base = datetime.fromisoformat(job.last_run)
                         if base.tzinfo is None:
                             base = base.replace(tzinfo=self.timezone)
+                        itr = croniter(job.schedule, base)
+                        next_run = itr.get_next(datetime)
+                        if next_run <= now:
+                            due.append(job)
+                            job.last_run = now.isoformat()
+                            job.next_run = itr.get_next(datetime).isoformat()
                     else:
-                        base = now
-                    itr = croniter(job.schedule, base)
-                    next_run = itr.get_next(datetime)
-
-                    if next_run <= now:
-                        due.append(job)
-                        job.last_run = now.isoformat()
-                        job.next_run = itr.get_next(datetime).isoformat()
+                        itr = croniter(job.schedule, now)
+                        prev_run = itr.get_prev(datetime)
+                        if prev_run.date() == now.date():
+                            due.append(job)
+                            job.last_run = now.isoformat()
+                            job.next_run = itr.get_next(datetime).isoformat()
                 except Exception:
                     continue
 
