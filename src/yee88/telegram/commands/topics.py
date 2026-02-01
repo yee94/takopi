@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re as _re
 from typing import TYPE_CHECKING
 
 from ...context import RunContext
@@ -339,4 +340,85 @@ async def _handle_topic_command(
         channel_id=msg.chat_id,
         message=RenderedMessage(text=rendered_text, extra={"entities": entities}),
         options=SendOptions(thread_id=thread_id),
+    )
+
+
+_FORK_TITLE_PATTERN = _re.compile(r"^(.+) \(fork #(\d+)\)$")
+
+
+def _get_forked_title(title: str | None) -> str:
+    if title is None:
+        return "topic (fork #1)"
+    match = _FORK_TITLE_PATTERN.match(title)
+    if match:
+        base = match.group(1)
+        num = int(match.group(2))
+        return f"{base} (fork #{num + 1})"
+    return f"{title} (fork #1)"
+
+
+async def _handle_fork_command(
+    cfg: TelegramBridgeConfig,
+    msg: TelegramIncomingMessage,
+    store: TopicStateStore,
+    *,
+    resolved_scope: str | None = None,
+    scope_chat_ids: frozenset[int] | None = None,
+) -> None:
+    from ...model import ResumeToken
+
+    reply = make_reply(cfg, msg)
+    error = _topics_command_error(
+        cfg,
+        msg.chat_id,
+        resolved_scope=resolved_scope,
+        scope_chat_ids=scope_chat_ids,
+    )
+    if error is not None:
+        await reply(text=error)
+        return
+    tkey = _topic_key(msg, cfg, scope_chat_ids=scope_chat_ids)
+    if tkey is None:
+        await reply(text="this command only works inside a topic.")
+        return
+
+    snapshot = await store.get_thread(*tkey)
+    current_title = snapshot.topic_title if snapshot else None
+    forked_title = _get_forked_title(current_title)
+
+    created = await cfg.bot.create_forum_topic(msg.chat_id, forked_title)
+    if created is None:
+        await reply(text="failed to create forked topic.")
+        return
+
+    new_thread_id = created.message_thread_id
+
+    if snapshot and snapshot.context:
+        await store.set_context(
+            msg.chat_id,
+            new_thread_id,
+            snapshot.context,
+            topic_title=forked_title,
+        )
+
+    if snapshot and snapshot.sessions:
+        for engine, resume_value in snapshot.sessions.items():
+            token = ResumeToken(engine=engine, value=resume_value)
+            await store.set_session_resume(msg.chat_id, new_thread_id, token)
+
+    await reply(text=f"forked to new topic `{forked_title}`.")
+
+    context_label = _format_context(cfg.runtime, snapshot.context) if snapshot and snapshot.context else "none"
+    sessions_label = ", ".join(sorted(snapshot.sessions.keys())) if snapshot and snapshot.sessions else "none"
+    welcome_text = (
+        f"forked from previous topic\n\n"
+        f"context: `{context_label}`\n"
+        f"sessions: {sessions_label}\n\n"
+        "continue your conversation here!"
+    )
+    rendered_text, entities = prepare_telegram(MarkdownParts(header=welcome_text))
+    await cfg.exec_cfg.transport.send(
+        channel_id=msg.chat_id,
+        message=RenderedMessage(text=rendered_text, extra={"entities": entities}),
+        options=SendOptions(thread_id=new_thread_id),
     )

@@ -44,6 +44,7 @@ from .commands.handlers import (
     handle_ctx_command,
     handle_file_command,
     handle_file_put_default,
+    handle_fork_command,
     handle_media_group,
     handle_model_command,
     handle_new_command,
@@ -218,6 +219,15 @@ def _dispatch_builtin_command(
         if command_id == "new":
             handler = partial(
                 handle_new_command,
+                cfg,
+                msg,
+                topic_store,
+                resolved_scope=resolved_scope,
+                scope_chat_ids=scope_chat_ids,
+            )
+        elif command_id == "fork":
+            handler = partial(
+                handle_fork_command,
                 cfg,
                 msg,
                 topic_store,
