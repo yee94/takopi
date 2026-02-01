@@ -1,16 +1,38 @@
 # changelog
 
+## v0.7.0 (2026-02-01)
+
+### features
+
+- add `/handoff` command to transfer desktop session to mobile seamlessly
+
+### fixes
+
+- fix scheduled task trigger issues in cron scheduler
+
+## v0.6.3 (2026-02-01)
+
+### features
+
+- add `/model reset` subcommand to clear model overrides
+
 ## v0.6.2 (2026-01-31)
 
 ### changes
 
 - optimize system_prompt handling: only prepend on first run to save tokens
 
+## v0.6.1 (2026-01-31)
+
+### fixes
+
+- correct system_prompt syntax error in settings
+
 ## v0.6.0 (2026-01-31)
 
 ### features
 
-- add one-time task execution support in cron
+- add one-time task execution support in cron scheduler
 
 ### docs
 
@@ -20,11 +42,16 @@
 
 - update system prompt wording
 
-## v0.2.0 (2026-01-30)
+## v0.5.0 (2026-01-31)
 
 ### changes
 
-- rename startup message from "yee88 is ready" to "yee88 is ready"
+- fork baseline from upstream v0.21.4
+- minor fixes and improvements
+
+---
+
+## upstream changelog (v0.21.4 and earlier)
 
 ## v0.21.4 (2026-01-22)
 
