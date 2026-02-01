@@ -223,6 +223,8 @@ def send(
             typer.echo("❌ 未找到 OpenCode 会话", err=True)
             raise typer.Exit(1)
         
+        typer.echo("\n📲 会话接力 - 将电脑端会话发送到 Telegram 继续对话")
+        typer.echo("━" * 50)
         typer.echo("\n📋 最近的会话:\n")
         for i, s in enumerate(sessions[:10], 1):
             title_display = s.title[:40] if s.title else s.project_name
