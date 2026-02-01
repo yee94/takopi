@@ -1077,7 +1077,8 @@ async def run_main_loop(
                 tg.start_soon(run_config_watch)
 
             if config_path is not None:
-                cron_manager = CronManager(config_path.parent)
+                cron_manager = CronManager(config_path.parent, timezone="Asia/Shanghai")
+                logger.info("cron.manager.initialized", timezone="Asia/Shanghai")
 
                 async def _execute_cron_job(job: CronJob) -> None:
                     try:

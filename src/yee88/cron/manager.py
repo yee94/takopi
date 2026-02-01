@@ -2,25 +2,54 @@ import tomllib
 import tomli_w
 from pathlib import Path
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 from croniter import croniter
 from datetime import datetime
 from .models import CronJob
 
+BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+
 
 class CronManager:
-    def __init__(self, config_dir: Path):
+    def __init__(self, config_dir: Path, timezone: str = "Asia/Shanghai"):
         self.file = config_dir / "cron.toml"
         self.jobs: List[CronJob] = []
+        self.timezone = ZoneInfo(timezone)
 
     def _validate_project(self, project: str) -> None:
         if not project:
             return
+        
         path = Path(project).expanduser().resolve()
         if path.exists() and path.is_dir():
-            git_dir = path / ".git"
-            if git_dir.exists():
-                return
-            raise ValueError(f"不是 git 仓库: {project}")
+            return
+        
+        from ..settings import load_settings_if_exists
+        from ..engines import list_backend_ids
+        
+        result = load_settings_if_exists()
+        if result is None:
+            return
+        
+        settings, config_path = result
+        engine_ids = list_backend_ids()
+        projects_config = settings.to_projects_config(
+            config_path=config_path,
+            engine_ids=engine_ids
+        )
+        
+        if project.lower() in projects_config.projects:
+            return
+        
+        available = list(projects_config.projects.keys())
+        if available:
+            raise ValueError(
+                f"未知项目: {project}。可用项目: {', '.join(available)}"
+            )
+        else:
+            raise ValueError(
+                f"未知项目: {project}。请先使用 'yee88 init' 注册项目"
+            )
 
     def load(self):
         if not self.file.exists():
@@ -99,7 +128,7 @@ class CronManager:
         return False
 
     def get_due_jobs(self) -> List[CronJob]:
-        now = datetime.now()
+        now = datetime.now(self.timezone)
         due = []
         one_time_completed = []
 
@@ -107,19 +136,24 @@ class CronManager:
             if not job.enabled:
                 continue
 
-            # 一次性任务处理
             if job.one_time:
                 try:
                     exec_time = datetime.fromisoformat(job.schedule)
+                    if exec_time.tzinfo is None:
+                        exec_time = exec_time.replace(tzinfo=self.timezone)
                     if exec_time <= now:
                         due.append(job)
                         one_time_completed.append(job.id)
                 except Exception:
                     continue
             else:
-                # 周期性任务处理
                 try:
-                    base = datetime.fromisoformat(job.last_run) if job.last_run else now
+                    if job.last_run:
+                        base = datetime.fromisoformat(job.last_run)
+                        if base.tzinfo is None:
+                            base = base.replace(tzinfo=self.timezone)
+                    else:
+                        base = now
                     itr = croniter(job.schedule, base)
                     next_run = itr.get_next(datetime)
 
@@ -130,7 +164,6 @@ class CronManager:
                 except Exception:
                     continue
 
-        # 删除已完成的一次性任务
         if one_time_completed:
             self.jobs = [j for j in self.jobs if j.id not in one_time_completed]
 
