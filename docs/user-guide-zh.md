@@ -2,7 +2,7 @@
 
 yee88 是一个 Telegram 桥接工具，让你可以通过 Telegram 聊天界面来运行 AI 编程助手（Codex、Claude Code、OpenCode、Pi）。
 
-**当前版本: v0.7.1**
+**当前版本: v0.8.0**
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
@@ -195,6 +195,10 @@ yee88 config set transports.telegram.voice_transcription true
 ```
 
 设置环境变量 `OPENAI_API_KEY`
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
 
 ### 使用（📱 手机侧）
 
@@ -512,7 +516,109 @@ yee88 handoff -s ses_abc123 -n 5
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
-## 📝 十四、使用技巧
+## ⏰ 十四、定时任务（Cron）
+
+通过配置定时任务，让 yee88 自动在指定时间执行指令。
+
+### 定时任务特性
+
+- ✅ **全新 Session 运行** - 每个定时任务都在独立的全新会话中运行，不受任何上下文干扰
+- ✅ **可配置引擎和模型** - 每个任务可独立指定使用的 AI 引擎和模型
+- ✅ **支持 Cron 表达式** - 使用标准 Cron 表达式设置执行时间
+- ✅ **支持一次性任务** - 可设置仅执行一次的定时任务
+
+### 配置定时任务
+
+定时任务配置保存在 `~/.yee88/cron.toml`。
+
+#### 配置文件格式
+
+```toml
+[[jobs]]
+id = "daily-summary"                # 任务唯一标识
+schedule = "0 9 * * *"              # Cron 表达式：每天上午 9 点
+message = "总结昨天提交的代码"       # 要执行的指令
+project = "myproject"               # 关联的项目（可选）
+enabled = true                      # 是否启用
+engine = "claude"                   # 指定引擎：codex / claude / opencode / pi（可选）
+model = "claude-sonnet-4-5-20250929" # 指定模型（可选）
+
+[[jobs]]
+id = "weekly-report"
+schedule = "0 18 * * 5"             # 每周五下午 6 点
+message = "生成本周工作总结"
+project = "myproject"
+enabled = true
+engine = "codex"
+model = "gpt-4o"
+```
+
+#### 一次性任务
+
+设置 `one_time = true`，任务执行一次后自动删除：
+
+```toml
+[[jobs]]
+id = "one-time-task"
+schedule = "2025-02-10T14:30:00+08:00"  # ISO 8601 格式时间
+message = "执行一次性的数据分析"
+project = "myproject"
+one_time = true
+engine = "opencode"
+```
+
+### CLI 命令管理
+
+```bash
+# 查看所有定时任务
+yee88 cron list
+
+# 添加定时任务（交互式）
+yee88 cron add
+
+# 删除定时任务
+yee88 cron remove daily-summary
+
+# 启用/禁用定时任务
+yee88 cron enable daily-summary
+yee88 cron disable daily-summary
+```
+
+### 关键特性说明
+
+#### 1. 全新 Session 运行
+
+定时任务默认在**全新的会话**中运行：
+- 不继承任何之前的对话上下文
+- 不恢复之前的会话状态
+- 每个任务都是独立的 AI 会话
+
+这确保了定时任务不会因为之前的对话而产生意外行为。
+
+#### 2. 引擎和模型配置
+
+可以为每个定时任务独立配置：
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `engine` | AI 引擎类型 | `codex`, `claude`, `opencode`, `pi` |
+| `model` | 具体模型名称 | `gpt-4o`, `claude-sonnet-4-5-20250929` |
+
+**优先级**：任务配置 > 项目配置 > 全局配置
+
+#### 3. Cron 表达式参考
+
+| 表达式 | 说明 |
+|--------|------|
+| `0 9 * * *` | 每天上午 9:00 |
+| `0 0 * * 1` | 每周一午夜 |
+| `*/30 * * * *` | 每 30 分钟 |
+| `0 0 1 * *` | 每月 1 号午夜 |
+| `0 9,18 * * 1-5` | 工作日 9:00 和 18:00 |
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+## 📝 十五、使用技巧
 
 ### 1. 快速切换上下文
 
@@ -555,6 +661,17 @@ codex resume <token>
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
 ## 📋 版本历史
+
+### v0.8.0 (2025-02-02)
+
+**新功能**
+- ✨ **定时任务增强**:
+  - 支持配置引擎和模型 - 每个定时任务可独立指定使用的 AI 引擎和模型
+  - 全新 Session 运行 - 定时任务默认在独立的全新会话中执行，不受上下文干扰
+  - 支持一次性任务 - 可设置仅执行一次的定时任务（执行后自动删除）
+
+**改进**
+- 优化定时任务的执行隔离性，确保任务之间互不干扰
 
 ### v0.7.1 (2025-02-01)
 
