@@ -15,6 +15,7 @@ dependencies = [
   "openai>=2.15.0",
   "pydantic>=2.12.5",
   "pydantic-settings>=2.12.0",
+  "py-cord>=2.6.0",
   "questionary>=2.1.1",
   "rich>=14.2.0",
   "structlog>=25.5.0",
@@ -48,6 +49,7 @@ pi = "yee88.runners.pi:BACKEND"
 
 [project.entry-points."yee88.transport_backends"]
 telegram = "yee88.telegram.backend:BACKEND"
+discord = "yee88.discord.backend:BACKEND"
 
 [build-system]
 requires = ["hatchling"]

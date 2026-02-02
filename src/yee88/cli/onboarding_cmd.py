@@ -1,3 +1,5 @@
+"""Onboarding commands for multiple transports."""
+
 from __future__ import annotations
 
 import sys
@@ -13,16 +15,28 @@ from ..config import ConfigError, load_or_init_config, write_config
 from ..config_migrations import migrate_config
 from ..logging import setup_logging
 from ..settings import TakopiSettings
-from ..telegram import onboarding
 from .init import _ensure_projects_table
 from .run import _load_settings_optional
+
+
+def _get_transport_onboarding(transport: str):
+    if transport == "telegram":
+        from ..telegram import onboarding as telegram_onboarding
+
+        return telegram_onboarding
+    elif transport == "discord":
+        from ..discord import onboarding as discord_onboarding
+
+        return discord_onboarding
+    else:
+        raise ConfigError(f"Unsupported transport: {transport!r}")
 
 
 def chat_id(
     token: str | None = typer.Option(
         None,
         "--token",
-        help="Telegram bot token (defaults to config if available).",
+        help="Bot token (defaults to config if available).",
     ),
     project: str | None = typer.Option(
         None,
@@ -30,7 +44,6 @@ def chat_id(
         help="Project alias to print a chat_id snippet for.",
     ),
 ) -> None:
-    """Capture a Telegram chat id and exit."""
     setup_logging_fn = cast(
         Callable[..., None],
         _resolve_cli_attr("setup_logging") or setup_logging,
@@ -38,10 +51,6 @@ def chat_id(
     load_settings_optional_fn = cast(
         Callable[[], tuple[TakopiSettings | None, Path | None]],
         _resolve_cli_attr("_load_settings_optional") or _load_settings_optional,
-    )
-    onboarding_mod = cast(
-        Any,
-        _resolve_cli_attr("onboarding") or onboarding,
     )
     load_or_init_config_fn = cast(
         Callable[[], tuple[dict, Path]],
@@ -61,14 +70,34 @@ def chat_id(
     )
 
     setup_logging_fn(debug=False, cache_logger_on_first_use=False)
-    if token is None:
-        settings, _ = load_settings_optional_fn()
-        if settings is not None:
-            tg = settings.transports.telegram
-            token = tg.bot_token or None
+
+    # Determine transport type from settings
+    settings, _ = load_settings_optional_fn()
+    transport = "telegram"  # Default to telegram for backward compatibility
+    if settings is not None:
+        transport = settings.transport
+        # Get token from config if not provided
+        if token is None:
+            if transport == "telegram":
+                tg = settings.transports.telegram
+                token = tg.bot_token or None
+            elif transport == "discord":
+                extra = settings.transports.model_extra or {}
+                discord_cfg = extra.get("discord", {})
+                if isinstance(discord_cfg, dict):
+                    token = discord_cfg.get("bot_token")
+
+    # Get transport-specific onboarding module
+    try:
+        onboarding_mod = _get_transport_onboarding(transport)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
     chat = anyio.run(partial(onboarding_mod.capture_chat_id, token=token))
     if chat is None:
         raise typer.Exit(code=1)
+
     if project:
         project = project.strip()
         if not project:
@@ -106,15 +135,28 @@ def chat_id(
 
 
 def onboarding_paths() -> None:
-    """Print all possible onboarding paths."""
     setup_logging_fn = cast(
         Callable[..., None],
         _resolve_cli_attr("setup_logging") or setup_logging,
     )
-    onboarding_mod = cast(
-        Any,
-        _resolve_cli_attr("onboarding") or onboarding,
+
+    # Determine transport type from settings
+    load_settings_optional_fn = cast(
+        Callable[[], tuple[TakopiSettings | None, Path | None]],
+        _resolve_cli_attr("_load_settings_optional") or _load_settings_optional,
     )
+
+    settings, _ = load_settings_optional_fn()
+    transport = "telegram"  # Default to telegram
+    if settings is not None:
+        transport = settings.transport
+
+    try:
+        onboarding_mod = _get_transport_onboarding(transport)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
     setup_logging_fn(debug=False, cache_logger_on_first_use=False)
     onboarding_mod.debug_onboarding_paths()
 

@@ -22,13 +22,15 @@ def _settings() -> TakopiSettings:
 def test_doctor_ok(monkeypatch) -> None:
     settings = _settings()
     monkeypatch.setattr(cli, "load_settings", lambda: (settings, Path("x")))
-    monkeypatch.setattr(cli, "resolve_plugins_allowlist", lambda _settings: None)
-    monkeypatch.setattr(cli, "list_backend_ids", lambda allowlist=None: ["codex"])
 
-    async def _fake_checks(*_args, **_kwargs):
-        return [cli.DoctorCheck("telegram token", "ok", "@bot")]
+    # Mock the transport doctor to return success
+    class FakeDoctor:
+        def run_checks(self, settings, config_path):
+            return [cli.DoctorCheck("telegram token", "ok", "@bot")]
 
-    monkeypatch.setattr(cli, "_doctor_telegram_checks", _fake_checks)
+    import sys
+    doctor_module = sys.modules["yee88.cli.doctor"]
+    monkeypatch.setattr(doctor_module, "_get_transport_doctor", lambda transport: FakeDoctor())
 
     runner = CliRunner()
     result = runner.invoke(cli.create_app(), ["doctor"])
@@ -41,13 +43,15 @@ def test_doctor_ok(monkeypatch) -> None:
 def test_doctor_errors_exit_nonzero(monkeypatch) -> None:
     settings = _settings()
     monkeypatch.setattr(cli, "load_settings", lambda: (settings, Path("x")))
-    monkeypatch.setattr(cli, "resolve_plugins_allowlist", lambda _settings: None)
-    monkeypatch.setattr(cli, "list_backend_ids", lambda allowlist=None: ["codex"])
 
-    async def _fake_checks(*_args, **_kwargs):
-        return [cli.DoctorCheck("telegram token", "error", "bad token")]
+    # Mock the transport doctor to return error
+    class FakeDoctor:
+        def run_checks(self, settings, config_path):
+            return [cli.DoctorCheck("telegram token", "error", "bad token")]
 
-    monkeypatch.setattr(cli, "_doctor_telegram_checks", _fake_checks)
+    import sys
+    doctor_module = sys.modules["yee88.cli.doctor"]
+    monkeypatch.setattr(doctor_module, "_get_transport_doctor", lambda transport: FakeDoctor())
 
     runner = CliRunner()
     result = runner.invoke(cli.create_app(), ["doctor"])
@@ -75,11 +79,13 @@ class _FakeBot:
 
 @pytest.mark.anyio
 async def test_doctor_telegram_checks_invalid_token(monkeypatch) -> None:
+    from yee88.telegram import client as telegram_client_module
+
     bot = _FakeBot(me=None, chat=None)
-    monkeypatch.setattr(cli, "TelegramClient", lambda _token: bot)
+    monkeypatch.setattr(telegram_client_module, "TelegramClient", lambda _token: bot)
     topics = TelegramTopicsSettings(enabled=True)
 
-    checks = await cli._doctor_telegram_checks(
+    checks = await cli._async_doctor_telegram_checks(
         "token",
         123,
         topics,
@@ -99,19 +105,22 @@ async def test_doctor_telegram_checks_invalid_token(monkeypatch) -> None:
 
 @pytest.mark.anyio
 async def test_doctor_telegram_checks_chat_and_topics_error(monkeypatch) -> None:
+    from yee88.telegram import client as telegram_client_module
+    from yee88.telegram import topics as telegram_topics_module
+
     bot = _FakeBot(
         me=User(id=1, username="bot", first_name=None, last_name=None),
         chat=None,
     )
-    monkeypatch.setattr(cli, "TelegramClient", lambda _token: bot)
+    monkeypatch.setattr(telegram_client_module, "TelegramClient", lambda _token: bot)
 
     async def _raise_topics(*_args, **_kwargs) -> None:
         raise ConfigError("bad topics")
 
-    monkeypatch.setattr(cli, "_validate_topics_setup_for", _raise_topics)
+    monkeypatch.setattr(telegram_topics_module, "_validate_topics_setup_for", _raise_topics)
     topics = TelegramTopicsSettings(enabled=True)
 
-    checks = await cli._doctor_telegram_checks(
+    checks = await cli._async_doctor_telegram_checks(
         "token",
         321,
         topics,

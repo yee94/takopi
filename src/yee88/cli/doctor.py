@@ -1,22 +1,16 @@
+"""Health checks for yee88 transports."""
+
 from __future__ import annotations
 
-import os
-import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import anyio
 import typer
 
 from ..config import ConfigError
-from ..engines import list_backend_ids
-from ..ids import RESERVED_CHAT_COMMANDS
-from ..runtime_loader import resolve_plugins_allowlist
-from ..settings import TakopiSettings, TelegramTopicsSettings
-from ..telegram.client import TelegramClient
-from ..telegram.topics import _validate_topics_setup_for
+from ..settings import TakopiSettings
 
 DoctorStatus = Literal["ok", "warning", "error"]
 
@@ -33,18 +27,75 @@ class DoctorCheck:
         return f"- {self.label}: {self.status}"
 
 
+def _get_transport_doctor(
+    transport: str,
+) -> "TransportDoctor":
+    if transport == "telegram":
+        from .doctor_telegram import TelegramDoctor
+
+        return TelegramDoctor()
+    elif transport == "discord":
+        from .doctor_discord import DiscordDoctor
+
+        return DiscordDoctor()
+    else:
+        raise ConfigError(f"Unsupported transport: {transport!r}")
+
+
+class TransportDoctor:
+    def run_checks(
+        self,
+        settings: TakopiSettings,
+        config_path: Path,
+    ) -> list[DoctorCheck]:
+        raise NotImplementedError
+
+
+def run_doctor(
+    *,
+    load_settings_fn: Callable[[], tuple[TakopiSettings, Path]],
+) -> None:
+    try:
+        settings, config_path = load_settings_fn()
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    transport = settings.transport
+
+    try:
+        doctor = _get_transport_doctor(transport)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    checks = doctor.run_checks(settings, config_path)
+
+    typer.echo(f"yee88 doctor ({transport})")
+    for check in checks:
+        typer.echo(check.render())
+
+    if any(check.status == "error" for check in checks):
+        raise typer.Exit(code=1)
+
+
+# Backward compatibility exports
 def _doctor_file_checks(settings: TakopiSettings) -> list[DoctorCheck]:
-    files = settings.transports.telegram.files
-    if not files.enabled:
+    """Backward compatibility: file checks for telegram transport."""
+    tg = settings.transports.telegram.files
+    if not tg.enabled:
         return [DoctorCheck("file transfer", "ok", "disabled")]
-    if files.allowed_user_ids:
-        count = len(files.allowed_user_ids)
+    if tg.allowed_user_ids:
+        count = len(tg.allowed_user_ids)
         detail = f"restricted to {count} user id(s)"
         return [DoctorCheck("file transfer", "ok", detail)]
     return [DoctorCheck("file transfer", "warning", "enabled for all users")]
 
 
 def _doctor_voice_checks(settings: TakopiSettings) -> list[DoctorCheck]:
+    """Backward compatibility: voice checks for telegram transport."""
+    import os
+
     if not settings.transports.telegram.voice_transcription:
         return [DoctorCheck("voice transcription", "ok", "disabled")]
     api_key = settings.transports.telegram.voice_transcription_api_key
@@ -57,18 +108,18 @@ def _doctor_voice_checks(settings: TakopiSettings) -> list[DoctorCheck]:
     return [DoctorCheck("voice transcription", "error", "API key not set")]
 
 
-async def _doctor_telegram_checks(
+async def _async_doctor_telegram_checks(
     token: str,
     chat_id: int,
-    topics: TelegramTopicsSettings,
+    topics,
     project_chat_ids: tuple[int, ...],
 ) -> list[DoctorCheck]:
+    """Async implementation of telegram-specific checks."""
+    from ..telegram.client import TelegramClient
+    from ..telegram.topics import _validate_topics_setup_for
+
     checks: list[DoctorCheck] = []
-    client_factory = _resolve_cli_attr("TelegramClient") or TelegramClient
-    validate_topics = (
-        _resolve_cli_attr("_validate_topics_setup_for") or _validate_topics_setup_for
-    )
-    bot = client_factory(token)
+    bot = TelegramClient(token)
     try:
         me = await bot.get_me()
         if me is None:
@@ -90,7 +141,7 @@ async def _doctor_telegram_checks(
             checks.append(DoctorCheck("chat_id", "ok", f"{chat.type} ({chat_id})"))
         if topics.enabled:
             try:
-                await validate_topics(
+                await _validate_topics_setup_for(
                     bot=bot,
                     topics=topics,
                     chat_id=chat_id,
@@ -101,73 +152,27 @@ async def _doctor_telegram_checks(
                 checks.append(DoctorCheck("topics", "error", str(exc)))
         else:
             checks.append(DoctorCheck("topics", "ok", "disabled"))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         checks.append(DoctorCheck("telegram", "error", str(exc)))
     finally:
         await bot.close()
     return checks
 
 
-def run_doctor(
-    *,
-    load_settings_fn: Callable[[], tuple[TakopiSettings, Path]],
-    telegram_checks: Callable[
-        [str, int, TelegramTopicsSettings, tuple[int, ...]],
-        Awaitable[list[DoctorCheck]],
-    ],
-    file_checks: Callable[[TakopiSettings], list[DoctorCheck]],
-    voice_checks: Callable[[TakopiSettings], list[DoctorCheck]],
-) -> None:
-    try:
-        settings, config_path = load_settings_fn()
-    except ConfigError as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=1) from exc
+def _doctor_telegram_checks(
+    token: str,
+    chat_id: int,
+    topics,
+    project_chat_ids: tuple[int, ...],
+) -> list[DoctorCheck]:
+    """Backward compatibility: run telegram-specific checks."""
+    import anyio
 
-    if settings.transport != "telegram":
-        typer.echo(
-            "error: yee88 doctor currently supports the telegram transport only.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    allowlist = resolve_plugins_allowlist(settings)
-    engine_ids = list_backend_ids(allowlist=allowlist)
-    try:
-        projects_cfg = settings.to_projects_config(
-            config_path=config_path,
-            engine_ids=engine_ids,
-            reserved=RESERVED_CHAT_COMMANDS,
-        )
-    except ConfigError as exc:
-        typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=1) from exc
-
-    tg = settings.transports.telegram
-    project_chat_ids = projects_cfg.project_chat_ids()
-    telegram_checks_result = anyio.run(
-        telegram_checks,
-        tg.bot_token,
-        tg.chat_id,
-        tg.topics,
+    result = anyio.run(
+        _async_doctor_telegram_checks,
+        token,
+        chat_id,
+        topics,
         project_chat_ids,
     )
-    if telegram_checks_result is None:
-        telegram_checks_result = []
-    checks = [
-        *telegram_checks_result,
-        *file_checks(settings),
-        *voice_checks(settings),
-    ]
-    typer.echo("yee88 doctor")
-    for check in checks:
-        typer.echo(check.render())
-    if any(check.status == "error" for check in checks):
-        raise typer.Exit(code=1)
-
-
-def _resolve_cli_attr(name: str) -> object | None:
-    cli_module = sys.modules.get("yee88.cli")
-    if cli_module is None:
-        return None
-    return getattr(cli_module, name, None)
+    return result or []

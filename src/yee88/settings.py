@@ -323,11 +323,54 @@ def validate_settings_data(
         raise ConfigError(f"Invalid config in {config_path}: {exc}") from exc
 
 
+def require_transport_config(
+    settings: TakopiSettings, config_path: Path
+) -> dict[str, Any]:
+    """Get transport configuration for the active transport.
+
+    Returns transport-specific configuration dict.
+    For telegram: returns {"bot_token": str, "chat_id": int, ...}
+    For discord: returns {"bot_token": str, ...}
+    """
+    transport = settings.transport
+
+    if transport == "telegram":
+        tg = settings.transports.telegram
+        return {
+            "bot_token": tg.bot_token,
+            "chat_id": tg.chat_id,
+            "allowed_user_ids": tg.allowed_user_ids,
+            "message_overflow": tg.message_overflow,
+            "voice_transcription": tg.voice_transcription,
+            "session_mode": tg.session_mode,
+            "show_resume_line": tg.show_resume_line,
+            "topics": tg.topics.model_dump() if tg.topics else {},
+            "files": tg.files.model_dump() if tg.files else {},
+        }
+    elif transport == "discord":
+        extra = settings.transports.model_extra or {}
+        discord_cfg = extra.get("discord", {})
+        if not isinstance(discord_cfg, dict):
+            raise ConfigError(
+                f"Invalid discord configuration in {config_path}; expected a table."
+            )
+        if not discord_cfg.get("bot_token"):
+            raise ConfigError(
+                f"Missing discord.bot_token in {config_path}."
+            )
+        return dict(discord_cfg)
+    else:
+        raise ConfigError(
+            f"Unsupported transport {transport!r} in {config_path}."
+        )
+
+
 def require_telegram(settings: TakopiSettings, config_path: Path) -> tuple[str, int]:
+    """Legacy function for telegram-only code."""
     if settings.transport != "telegram":
         raise ConfigError(
             f"Unsupported transport {settings.transport!r} in {config_path} "
-            "(telegram only for now)."
+            "(telegram only for this operation)."
         )
     tg = settings.transports.telegram
     return tg.bot_token, tg.chat_id

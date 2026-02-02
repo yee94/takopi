@@ -46,9 +46,11 @@ from ..telegram.topics import _validate_topics_setup_for
 from .doctor import (
     DoctorCheck,
     DoctorStatus,
+    _async_doctor_telegram_checks,
     _doctor_file_checks,
     _doctor_telegram_checks,
     _doctor_voice_checks,
+    _get_transport_doctor,
     run_doctor,
 )
 from .init import (
@@ -165,12 +167,7 @@ def topic_delete(
 def doctor() -> None:
     """Run configuration checks for the active transport."""
     setup_logging(debug=False, cache_logger_on_first_use=False)
-    run_doctor(
-        load_settings_fn=load_settings,
-        telegram_checks=_doctor_telegram_checks,
-        file_checks=_doctor_file_checks,
-        voice_checks=_doctor_voice_checks,
-    )
+    run_doctor(load_settings_fn=load_settings)
 
 
 def _engine_ids_for_cli() -> list[str]:
