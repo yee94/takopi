@@ -76,6 +76,8 @@ class CronManager:
                     "last_run": job.last_run,
                     "next_run": job.next_run,
                     "one_time": job.one_time,
+                    "engine": job.engine,
+                    "model": job.model,
                 }
                 for job in self.jobs
             ]
