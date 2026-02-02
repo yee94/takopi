@@ -1092,7 +1092,9 @@ async def run_main_loop(
 
                 async def _execute_cron_job(job: CronJob) -> None:
                     try:
+                        from ..model import EngineId
                         context = RunContext(project=job.project) if job.project else None
+                        engine_override: EngineId | None = job.engine if job.engine else None
                         await run_job(
                             chat_id=cfg.chat_id,
                             user_msg_id=0,
@@ -1101,6 +1103,9 @@ async def run_main_loop(
                             context=context,
                             thread_id=None,
                             force_hide_resume_line=True,
+                            force_new_session=True,
+                            run_options_model=job.model,
+                            engine_override=engine_override,
                         )
                     except Exception as exc:
                         logger.error(
@@ -1168,6 +1173,8 @@ async def run_main_loop(
                 engine_override: EngineId | None = None,
                 progress_ref: MessageRef | None = None,
                 force_hide_resume_line: bool = False,
+                force_new_session: bool = False,
+                run_options_model: str | None = None,
             ) -> None:
                 topic_key = (
                     (chat_id, thread_id)
@@ -1178,6 +1185,9 @@ async def run_main_loop(
                     )
                     else None
                 )
+                if force_new_session:
+                    topic_key = None
+                    chat_session_key = None
                 stateful_mode = topic_key is not None or chat_session_key is not None
                 show_resume_line = False if force_hide_resume_line else should_show_resume_line(
                     show_resume_line=cfg.show_resume_line,
@@ -1186,7 +1196,7 @@ async def run_main_loop(
                 )
                 engine_for_overrides = (
                     resume_token.engine
-                    if resume_token is not None
+                    if resume_token is not None and not force_new_session
                     else engine_override
                     if engine_override is not None
                     else cfg.runtime.resolve_engine(
@@ -1203,6 +1213,15 @@ async def run_main_loop(
                     topic_store=state.topic_store,
                     system_prompt=cfg.runtime.resolve_system_prompt(context),
                 )
+                if run_options_model:
+                    if run_options is None:
+                        run_options = EngineRunOptions(model=run_options_model)
+                    else:
+                        run_options = EngineRunOptions(
+                            model=run_options_model,
+                            reasoning=run_options.reasoning,
+                            system=run_options.system,
+                        )
                 await run_engine(
                     exec_cfg=cfg.exec_cfg,
                     runtime=cfg.runtime,
@@ -1210,7 +1229,7 @@ async def run_main_loop(
                     chat_id=chat_id,
                     user_msg_id=user_msg_id,
                     text=text,
-                    resume_token=resume_token,
+                    resume_token=None if force_new_session else resume_token,
                     context=context,
                     reply_ref=reply_ref,
                     on_thread_known=wrap_on_thread_known(
