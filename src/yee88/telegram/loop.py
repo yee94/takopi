@@ -1093,15 +1093,47 @@ async def run_main_loop(
                 async def _execute_cron_job(job: CronJob) -> None:
                     try:
                         from ..model import EngineId
+                        from ..markdown import MarkdownParts
+                        from ..transport import RenderedMessage, SendOptions
+                        from .render import prepare_telegram
+                        
                         context = RunContext(project=job.project) if job.project else None
                         engine_override: EngineId | None = job.engine if job.engine else None
+                        
+                        header_text = f"⏰ 定时任务开始: {job.id}"
+                        if job.project:
+                            header_text += f"\n📁 项目: {job.project}"
+                        
+                        rendered_text, entities = prepare_telegram(
+                            MarkdownParts(header=header_text)
+                        )
+                        
+                        initial_ref = await cfg.exec_cfg.transport.send(
+                            channel_id=cfg.chat_id,
+                            message=RenderedMessage(
+                                text=rendered_text, 
+                                extra={"entities": entities}
+                            ),
+                            options=SendOptions(
+                                notify=True,
+                            ),
+                        )
+                        
+                        if initial_ref is None:
+                            logger.error(
+                                "cron.initial_message_failed",
+                                job_id=job.id,
+                                error="Failed to send initial message to Telegram",
+                            )
+                            return
+                        
                         await run_job(
                             chat_id=cfg.chat_id,
-                            user_msg_id=0,
+                            user_msg_id=int(initial_ref.message_id),
                             text=job.message,
                             resume_token=None,
                             context=context,
-                            thread_id=None,
+                            thread_id=int(initial_ref.thread_id) if initial_ref.thread_id else None,
                             force_hide_resume_line=True,
                             force_new_session=True,
                             run_options_model=job.model,

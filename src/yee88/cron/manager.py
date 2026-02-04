@@ -71,13 +71,13 @@ class CronManager:
                     "id": job.id,
                     "schedule": job.schedule,
                     "message": job.message,
-                    "project": job.project,
+                    "project": job.project or "",
                     "enabled": job.enabled,
-                    "last_run": job.last_run,
-                    "next_run": job.next_run,
+                    "last_run": job.last_run or "",
+                    "next_run": job.next_run or "",
                     "one_time": job.one_time,
-                    "engine": job.engine,
-                    "model": job.model,
+                    "engine": job.engine or "",
+                    "model": job.model or "",
                 }
                 for job in self.jobs
             ]
@@ -161,12 +161,18 @@ class CronManager:
                             job.last_run = now.isoformat()
                             job.next_run = itr.get_next(datetime).isoformat()
                     else:
+                        # First run: calculate next scheduled time from now
+                        # Only trigger if next scheduled time is in the past (missed execution)
                         itr = croniter(job.schedule, now)
-                        prev_run = itr.get_prev(datetime)
-                        if prev_run.date() == now.date():
+                        next_run = itr.get_next(datetime)
+                        if next_run <= now:
+                            # Next scheduled time has already passed, trigger now
                             due.append(job)
                             job.last_run = now.isoformat()
                             job.next_run = itr.get_next(datetime).isoformat()
+                        else:
+                            # Next scheduled time is in the future, just record it
+                            job.next_run = next_run.isoformat()
                 except Exception:
                     continue
 
