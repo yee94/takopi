@@ -19,37 +19,32 @@ class CronManager:
     def _validate_project(self, project: str) -> None:
         if not project:
             return
-        
+
         path = Path(project).expanduser().resolve()
         if path.exists() and path.is_dir():
             return
-        
+
         from ..settings import load_settings_if_exists
         from ..engines import list_backend_ids
-        
+
         result = load_settings_if_exists()
         if result is None:
             return
-        
+
         settings, config_path = result
         engine_ids = list_backend_ids()
         projects_config = settings.to_projects_config(
-            config_path=config_path,
-            engine_ids=engine_ids
+            config_path=config_path, engine_ids=engine_ids
         )
-        
+
         if project.lower() in projects_config.projects:
             return
-        
+
         available = list(projects_config.projects.keys())
         if available:
-            raise ValueError(
-                f"未知项目: {project}。可用项目: {', '.join(available)}"
-            )
+            raise ValueError(f"未知项目: {project}。可用项目: {', '.join(available)}")
         else:
-            raise ValueError(
-                f"未知项目: {project}。请先使用 'yee88 init' 注册项目"
-            )
+            raise ValueError(f"未知项目: {project}。请先使用 'yee88 init' 注册项目")
 
     def load(self):
         if not self.file.exists():
@@ -59,10 +54,7 @@ class CronManager:
         with open(self.file, "rb") as f:
             data = tomllib.load(f)
 
-        self.jobs = [
-            CronJob(**job)
-            for job in data.get("jobs", [])
-        ]
+        self.jobs = [CronJob(**job) for job in data.get("jobs", [])]
 
     def save(self):
         data = {
@@ -76,8 +68,8 @@ class CronManager:
                     "last_run": job.last_run,
                     "next_run": job.next_run,
                     "one_time": job.one_time,
-                    "engine": job.engine,
-                    "model": job.model,
+                    "engine": job.engine or "",
+                    "model": job.model or "",
                 }
                 for job in self.jobs
             ]

@@ -1093,15 +1093,52 @@ async def run_main_loop(
                 async def _execute_cron_job(job: CronJob) -> None:
                     try:
                         from ..model import EngineId
-                        context = RunContext(project=job.project) if job.project else None
-                        engine_override: EngineId | None = job.engine if job.engine else None
+                        from ..markdown import MarkdownParts
+                        from ..transport import RenderedMessage, SendOptions
+                        from .render import prepare_telegram
+
+                        context = (
+                            RunContext(project=job.project) if job.project else None
+                        )
+                        engine_override: EngineId | None = (
+                            job.engine if job.engine else None
+                        )
+
+                        header_text = f"⏰ 定时任务开始: {job.id}"
+                        if job.project:
+                            header_text += f"\n📁 项目: {job.project}"
+
+                        rendered_text, entities = prepare_telegram(
+                            MarkdownParts(header=header_text)
+                        )
+
+                        initial_ref = await cfg.exec_cfg.transport.send(
+                            channel_id=cfg.chat_id,
+                            message=RenderedMessage(
+                                text=rendered_text, extra={"entities": entities}
+                            ),
+                            options=SendOptions(
+                                notify=True,
+                            ),
+                        )
+
+                        if initial_ref is None:
+                            logger.error(
+                                "cron.initial_message_failed",
+                                job_id=job.id,
+                                error="Failed to send initial message to Telegram",
+                            )
+                            return
+
                         await run_job(
                             chat_id=cfg.chat_id,
-                            user_msg_id=0,
+                            user_msg_id=int(initial_ref.message_id),
                             text=job.message,
                             resume_token=None,
                             context=context,
-                            thread_id=None,
+                            thread_id=int(initial_ref.thread_id)
+                            if initial_ref.thread_id
+                            else None,
                             force_hide_resume_line=True,
                             force_new_session=True,
                             run_options_model=job.model,
@@ -1120,6 +1157,18 @@ async def run_main_loop(
                     await cron_scheduler.start()
 
                 tg.start_soon(run_cron_scheduler)
+
+                from ..cron.watch import watch_cron_config
+
+                cron_file = config_path.parent / "cron.toml"
+
+                async def run_cron_watch() -> None:
+                    await watch_cron_config(
+                        cron_file=cron_file,
+                        manager=cron_manager,
+                    )
+
+                tg.start_soon(run_cron_watch)
 
             async def run_signal_watcher() -> None:
                 if not hasattr(signal, "SIGHUP"):
@@ -1189,10 +1238,14 @@ async def run_main_loop(
                     topic_key = None
                     chat_session_key = None
                 stateful_mode = topic_key is not None or chat_session_key is not None
-                show_resume_line = False if force_hide_resume_line else should_show_resume_line(
-                    show_resume_line=cfg.show_resume_line,
-                    stateful_mode=stateful_mode,
-                    context=context,
+                show_resume_line = (
+                    False
+                    if force_hide_resume_line
+                    else should_show_resume_line(
+                        show_resume_line=cfg.show_resume_line,
+                        stateful_mode=stateful_mode,
+                        context=context,
+                    )
                 )
                 engine_for_overrides = (
                     resume_token.engine
