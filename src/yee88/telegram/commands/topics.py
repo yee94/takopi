@@ -38,7 +38,7 @@ async def _handle_ctx_command(
     cfg: TelegramBridgeConfig,
     msg: TelegramIncomingMessage,
     args_text: str,
-    store: TopicStateStore,
+    store: TopicStateStore | None,
     *,
     resolved_scope: str | None = None,
     scope_chat_ids: frozenset[int] | None = None,

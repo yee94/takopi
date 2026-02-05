@@ -84,9 +84,9 @@ class TestCronSchedulerJobExecution:
             enabled=True,
         )
         
-        await scheduler._run_job_safe(job)
-        
-        mock_callback.assert_called_once_with(job)
+        await scheduler._run_job_safe(job, None)
+
+        mock_callback.assert_called_once_with(job, None)
 
     @pytest.mark.anyio
     async def test_run_job_safe_handles_exception(
@@ -94,11 +94,11 @@ class TestCronSchedulerJobExecution:
         cron_manager: CronManager,
         mock_task_group: MagicMock,
     ) -> None:
-        async def failing_callback(job: CronJob) -> None:
+        async def failing_callback(job: CronJob, scheduled_time: datetime | None = None) -> None:
             raise RuntimeError("Callback failed")
-        
+
         scheduler = CronScheduler(cron_manager, failing_callback, mock_task_group)
-        
+
         job = CronJob(
             id="test-job",
             schedule="* * * * *",
@@ -106,8 +106,8 @@ class TestCronSchedulerJobExecution:
             project="",
             enabled=True,
         )
-        
-        await scheduler._run_job_safe(job)
+
+        await scheduler._run_job_safe(job, None)
 
 
 class TestCronSchedulerTimezone:
