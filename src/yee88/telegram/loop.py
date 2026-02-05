@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -1090,56 +1091,39 @@ async def run_main_loop(
                 cron_manager = CronManager(config_path.parent, timezone="Asia/Shanghai")
                 logger.info("cron.manager.initialized", timezone="Asia/Shanghai")
 
-                async def _execute_cron_job(job: CronJob) -> None:
+                async def _execute_cron_job(job: CronJob, scheduled_time: datetime | None = None) -> None:
+                    execution_id = ""
                     try:
                         from ..model import EngineId
-                        from ..markdown import MarkdownParts
-                        from ..transport import RenderedMessage, SendOptions
-                        from .render import prepare_telegram
+                        from ..cron.scheduler import CRON_PROMPT_PREFIX
+                        from ..cron.execution_log import ExecutionLogManager
+                        
+                        log_manager = ExecutionLogManager(config_path.parent)
+                        execution_id = log_manager.record_start(job.id, scheduled_time)
                         
                         context = RunContext(project=job.project) if job.project else None
                         engine_override: EngineId | None = job.engine if job.engine else None
                         
-                        header_text = f"⏰ 定时任务开始: {job.id}"
-                        if job.project:
-                            header_text += f"\n📁 项目: {job.project}"
-                        
-                        rendered_text, entities = prepare_telegram(
-                            MarkdownParts(header=header_text)
-                        )
-                        
-                        initial_ref = await cfg.exec_cfg.transport.send(
-                            channel_id=cfg.chat_id,
-                            message=RenderedMessage(
-                                text=rendered_text, 
-                                extra={"entities": entities}
-                            ),
-                            options=SendOptions(
-                                notify=True,
-                            ),
-                        )
-                        
-                        if initial_ref is None:
-                            logger.error(
-                                "cron.initial_message_failed",
-                                job_id=job.id,
-                                error="Failed to send initial message to Telegram",
-                            )
-                            return
+                        prompt_with_prefix = CRON_PROMPT_PREFIX + job.message
                         
                         await run_job(
                             chat_id=cfg.chat_id,
-                            user_msg_id=int(initial_ref.message_id),
-                            text=job.message,
+                            user_msg_id=0,
+                            text=prompt_with_prefix,
                             resume_token=None,
                             context=context,
-                            thread_id=int(initial_ref.thread_id) if initial_ref.thread_id else None,
+                            thread_id=None,
                             force_hide_resume_line=True,
                             force_new_session=True,
                             run_options_model=job.model,
                             engine_override=engine_override,
                         )
+                        log_manager.record_complete(execution_id)
                     except Exception as exc:
+                        if execution_id:
+                            from ..cron.execution_log import ExecutionLogManager
+                            log_manager = ExecutionLogManager(config_path.parent)
+                            log_manager.record_failed(execution_id, str(exc))
                         logger.error(
                             "cron.job_failed",
                             job_id=job.id,
