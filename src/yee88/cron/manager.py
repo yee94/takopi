@@ -155,7 +155,8 @@ class CronManager:
                     else:
                         itr = croniter(job.schedule, now)
                         prev_run = itr.get_prev(datetime)
-                        if prev_run.date() == now.date():
+                        from datetime import timedelta
+                        if (now - prev_run) <= timedelta(hours=24):
                             due.append(job)
                             job.last_run = now.isoformat()
                             job.next_run = itr.get_next(datetime).isoformat()
