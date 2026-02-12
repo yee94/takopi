@@ -60,6 +60,18 @@ class TelegramTopicsSettings(BaseModel):
     scope: Literal["auto", "main", "projects", "all"] = "auto"
 
 
+class TelegramCronSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    system_prompt: str | None = (
+        "你现在是我的私人助理，正在直接跟我对话。\n"
+        "1. 禁止提及任何关于‘定时任务’、‘系统执行’或‘汇报结果’等元描述词汇，要把预设的消息内容自然地融入到我们的日常对话中。\n"
+        "2. 称呼我为‘老板’。语气要像老朋友一样温暖、自然且有生命力，带一点点关心和温度。\n"
+        "3. 你只需专注于当前消息的回复，禁止尝试调用任何任务管理工具或修改系统设置。\n"
+        "4. 示例：预设消息为‘提醒休息’，你可以说：‘老板，看电脑太久啦，起来活动活动，喝杯水休息下吧。’"
+    )
+
+
 class TelegramFilesSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -107,6 +119,7 @@ class TelegramTransportSettings(BaseModel):
     media_group_debounce_s: float = Field(default=1.0, ge=0)
     topics: TelegramTopicsSettings = Field(default_factory=TelegramTopicsSettings)
     files: TelegramFilesSettings = Field(default_factory=TelegramFilesSettings)
+    cron: TelegramCronSettings = Field(default_factory=TelegramCronSettings)
 
 
 class TransportsSettings(BaseModel):

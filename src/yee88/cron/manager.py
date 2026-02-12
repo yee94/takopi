@@ -54,7 +54,7 @@ class CronManager:
         with open(self.file, "rb") as f:
             data = tomllib.load(f)
 
-        self.jobs = [CronJob(**job) for job in data.get("jobs", [])]
+        self.jobs = [CronJob(**{k: v for k, v in job.items() if k in {'id', 'schedule', 'message', 'project', 'enabled', 'last_run', 'next_run', 'one_time', 'engine', 'model'}}) for job in data.get("jobs", [])]
 
     def save(self):
         data = {

@@ -1143,6 +1143,8 @@ async def run_main_loop(
                             force_new_session=True,
                             run_options_model=job.model,
                             engine_override=engine_override,
+                            progress_ref=initial_ref,
+                            system_prompt=cfg.cron.system_prompt,
                         )
                     except Exception as exc:
                         logger.error(
@@ -1224,6 +1226,7 @@ async def run_main_loop(
                 force_hide_resume_line: bool = False,
                 force_new_session: bool = False,
                 run_options_model: str | None = None,
+                system_prompt: str | None = None,
             ) -> None:
                 topic_key = (
                     (chat_id, thread_id)
@@ -1264,7 +1267,7 @@ async def run_main_loop(
                     engine_for_overrides,
                     chat_prefs=state.chat_prefs,
                     topic_store=state.topic_store,
-                    system_prompt=cfg.runtime.resolve_system_prompt(context),
+                    system_prompt=system_prompt or cfg.runtime.resolve_system_prompt(context),
                 )
                 if run_options_model:
                     if run_options is None:
