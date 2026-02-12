@@ -73,6 +73,17 @@ class CronScheduler:
         self.manager.load()
         logger.info("cron.scheduler.started", job_count=len(self.manager.jobs))
 
+        # Debug: log all jobs and their next_run times
+        for job in self.manager.jobs:
+            logger.info(
+                "cron.scheduler.job_status",
+                job_id=job.id,
+                enabled=job.enabled,
+                schedule=job.schedule,
+                last_run=job.last_run,
+                next_run=job.next_run,
+            )
+
         cycle = 0
         while self.running:
             cycle += 1

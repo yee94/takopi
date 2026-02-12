@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Callable, Awaitable, List
 
 import anyio
-from watchfiles import watch
+from watchfiles import awatch
 
 from ..logging import get_logger
 from .manager import CronManager
@@ -22,7 +22,7 @@ async def watch_cron_config(
     logger.info("cron.watch.started", path=str(cron_file))
 
     try:
-        for changes in watch(str(cron_file)):
+        async for changes in awatch(str(cron_file)):
             for change_type, path in changes:
                 if Path(path).name == "cron.toml":
                     logger.info(
@@ -31,7 +31,15 @@ async def watch_cron_config(
                         change_type=change_type.name,
                     )
 
-                    changed_jobs = manager.reload_jobs()
+                    await anyio.sleep(0.2)
+
+                    try:
+                        changed_jobs = manager.reload_jobs()
+                    except Exception as reload_exc:
+                        logger.error(
+                            "cron.watch.reload_failed", error=str(reload_exc)
+                        )
+                        break
 
                     if changed_jobs:
                         logger.info(

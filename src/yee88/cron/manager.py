@@ -105,6 +105,21 @@ class CronManager:
     def list(self) -> List[CronJob]:
         return self.jobs
 
+    def reload_jobs(self) -> List[str]:
+        old_jobs = {j.id: j for j in self.jobs}
+        self.load()
+        new_jobs = {j.id: j for j in self.jobs}
+
+        changed = []
+        for job_id, job in new_jobs.items():
+            if job_id not in old_jobs or old_jobs[job_id] != job:
+                changed.append(job_id)
+        for job_id in old_jobs:
+            if job_id not in new_jobs:
+                changed.append(job_id)
+
+        return changed
+
     def enable(self, job_id: str) -> bool:
         for job in self.jobs:
             if job.id == job_id:
@@ -151,7 +166,8 @@ class CronManager:
                         if next_run <= now:
                             due.append(job)
                             job.last_run = now.isoformat()
-                            job.next_run = itr.get_next(datetime).isoformat()
+                            itr_after_run = croniter(job.schedule, now)
+                            job.next_run = itr_after_run.get_next(datetime).isoformat()
                     else:
                         itr = croniter(job.schedule, now)
                         prev_run = itr.get_prev(datetime)
@@ -159,7 +175,8 @@ class CronManager:
                         if (now - prev_run) <= timedelta(hours=24):
                             due.append(job)
                             job.last_run = now.isoformat()
-                            job.next_run = itr.get_next(datetime).isoformat()
+                            itr_after_run = croniter(job.schedule, now)
+                            job.next_run = itr_after_run.get_next(datetime).isoformat()
                 except Exception:
                     continue
 
