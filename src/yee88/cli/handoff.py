@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,6 +19,7 @@ from ..telegram.topic_state import TopicStateStore, resolve_state_path
 app = typer.Typer(help="Handoff session context to Telegram")
 
 OPENCODE_STORAGE = Path.home() / ".local" / "share" / "opencode" / "storage"
+OPENCODE_DB = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
 
 
 @dataclass
@@ -59,10 +61,64 @@ def _get_recent_sessions(limit: int = 10) -> list[SessionInfo]:
 
 
 def _get_session_messages(session_id: str, limit: int = 5) -> list[dict]:
+    # 优先从 SQLite 数据库读取（新版 OpenCode 格式）
+    if OPENCODE_DB.exists():
+        result = _get_session_messages_sqlite(session_id, limit)
+        if result:
+            return result
+
+    # 回退到旧版文件系统格式
+    return _get_session_messages_fs(session_id, limit)
+
+
+def _get_session_messages_sqlite(session_id: str, limit: int = 5) -> list[dict]:
+    try:
+        conn = sqlite3.connect(str(OPENCODE_DB))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # 取最近 limit 条 user/assistant 消息
+        cursor.execute(
+            "SELECT id, data FROM message "
+            "WHERE session_id = ? "
+            "ORDER BY time_created DESC LIMIT ?",
+            (session_id, limit),
+        )
+        rows = cursor.fetchall()
+        rows.reverse()  # 按时间正序
+
+        result = []
+        for row in rows:
+            msg_data = json.loads(row["data"])
+            role = msg_data.get("role", "unknown")
+            msg_id = row["id"]
+
+            # 从 part 表读取文本内容
+            cursor.execute(
+                "SELECT data FROM part "
+                "WHERE message_id = ? "
+                "ORDER BY time_created ASC",
+                (msg_id,),
+            )
+            for part_row in cursor.fetchall():
+                part_data = json.loads(part_row["data"])
+                if part_data.get("type") == "text":
+                    text = part_data.get("text", "")
+                    result.append({"role": role, "text": text})
+                    break
+
+        conn.close()
+        return result
+    except (sqlite3.Error, json.JSONDecodeError, OSError):
+        return []
+
+
+def _get_session_messages_fs(session_id: str, limit: int = 5) -> list[dict]:
+    """旧版文件系统格式读取（兼容）"""
     message_dir = OPENCODE_STORAGE / "message" / session_id
     if not message_dir.exists():
         return []
-    
+
     messages: list[tuple[int, str, str]] = []
     for msg_file in message_dir.glob("msg_*.json"):
         try:
@@ -73,11 +129,11 @@ def _get_session_messages(session_id: str, limit: int = 5) -> list[dict]:
             messages.append((created, role, msg_id))
         except (json.JSONDecodeError, OSError):
             continue
-    
+
     messages.sort(key=lambda x: x[0], reverse=True)
     messages = messages[:limit]
     messages.reverse()
-    
+
     result = []
     for _, role, msg_id in messages:
         part_dir = OPENCODE_STORAGE / "part" / msg_id
@@ -94,7 +150,7 @@ def _get_session_messages(session_id: str, limit: int = 5) -> list[dict]:
                     break
             except (json.JSONDecodeError, OSError):
                 continue
-    
+
     return result
 
 
