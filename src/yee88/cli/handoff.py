@@ -11,6 +11,7 @@ import anyio
 import typer
 
 from ..context import RunContext
+from ..engines import list_backend_ids
 from ..model import ResumeToken
 from ..settings import load_settings_if_exists
 from ..telegram.client import TelegramClient
@@ -305,6 +306,23 @@ def send(
     if not session_id:
         typer.echo("❌ 会话 ID 为空", err=True)
         raise typer.Exit(1)
+    
+    # 验证 project 是否已注册
+    if session_project:
+        engine_ids = list_backend_ids()
+        projects_config = settings.to_projects_config(
+            config_path=config_path, engine_ids=engine_ids
+        )
+        project_key = session_project.lower()
+        if project_key not in projects_config.projects:
+            available = list(projects_config.projects.keys())
+            typer.echo(f"❌ 未知项目: {session_project!r}", err=True)
+            if available:
+                typer.echo(f"   可用项目: {', '.join(available)}", err=True)
+            typer.echo(f"   请先运行: yee88 init {session_project}", err=True)
+            raise typer.Exit(1)
+        # 使用规范化的 project key
+        session_project = project_key
     
     typer.echo(f"📖 读取会话 {session_id[:20]}...")
     
