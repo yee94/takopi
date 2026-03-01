@@ -3,7 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from collections.abc import Callable
 
-from .model import Action, ActionEvent, ResumeToken, StartedEvent, TakopiEvent
+from .model import (
+    Action,
+    ActionEvent,
+    ResumeToken,
+    StartedEvent,
+    TakopiEvent,
+    TextDeltaEvent,
+    TextFinishedEvent,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +34,8 @@ class ProgressState:
     resume_line: str | None
     context_line: str | None
     model: str | None = None
+    text_segments: tuple[str, ...] = ()
+    streaming_text: str | None = None
 
 
 class ProgressTracker:
@@ -35,6 +45,8 @@ class ProgressTracker:
         self.action_count = 0
         self._actions: dict[str, ActionState] = {}
         self._seq = 0
+        self._text_segments: list[str] = []
+        self._streaming_text: str | None = None
 
     def note_event(self, event: TakopiEvent) -> bool:
         match event:
@@ -71,6 +83,14 @@ class ProgressTracker:
                     last_update=seq,
                 )
                 return True
+            case TextDeltaEvent(snapshot=snapshot):
+                self._streaming_text = snapshot
+                return True
+            case TextFinishedEvent(text=text):
+                if text:
+                    self._text_segments.append(text)
+                self._streaming_text = None
+                return True
             case _:
                 return False
 
@@ -99,4 +119,6 @@ class ProgressTracker:
             resume_line=resume_line,
             context_line=context_line,
             model=model,
+            text_segments=tuple(self._text_segments),
+            streaming_text=self._streaming_text,
         )

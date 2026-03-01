@@ -4,7 +4,14 @@ from pathlib import Path
 import anyio
 import pytest
 
-from yee88.model import ActionEvent, CompletedEvent, ResumeToken, StartedEvent
+from yee88.model import (
+    ActionEvent,
+    CompletedEvent,
+    ResumeToken,
+    StartedEvent,
+    TextDeltaEvent,
+    TextFinishedEvent,
+)
 from yee88.runners.opencode import (
     OpenCodeRunner,
     OpenCodeStreamState,
@@ -366,3 +373,349 @@ async def test_run_serializes_same_session() -> None:
         await anyio.sleep(0)
         gate.set()
     assert max_in_flight == 1
+
+
+# --- TextFinishedEvent tests ---
+
+
+def test_step_finish_tool_calls_emits_text_finished() -> None:
+    """step_finish(tool-calls) with accumulated text emits TextFinishedEvent and resets last_text."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+    state.last_text = "I'll analyze the code"
+
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_test123",
+                "part": {
+                    "reason": "tool-calls",
+                    "tokens": {"input": 100, "output": 10},
+                },
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 1
+    evt = events[0]
+    assert isinstance(evt, TextFinishedEvent)
+    assert evt.type == "text_finished"
+    assert evt.engine == ENGINE
+    assert evt.text == "I'll analyze the code"
+    # last_text must be reset so next step starts fresh
+    assert state.last_text is None
+
+
+def test_step_finish_tool_calls_without_text_no_event() -> None:
+    """step_finish(tool-calls) without accumulated text emits nothing."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+    # last_text is None — no text accumulated
+
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_test123",
+                "part": {
+                    "reason": "tool-calls",
+                    "tokens": {"input": 100, "output": 10},
+                },
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 0
+
+
+def test_multi_step_agent_text_independent() -> None:
+    """Multi-step agent: each step's text is independent, final answer only contains last step."""
+    state = OpenCodeStreamState()
+
+    # Step 1: step_start → text → step_finish(tool-calls)
+    translate_opencode_event(
+        _decode_event({"type": "step_start", "sessionID": "ses_multi", "part": {}}),
+        title="opencode",
+        state=state,
+    )
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_multi",
+                "part": {"type": "text", "text": "Step 1 thinking"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    step1_events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_multi",
+                "part": {"reason": "tool-calls"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    assert len(step1_events) == 1
+    assert isinstance(step1_events[0], TextFinishedEvent)
+    assert step1_events[0].text == "Step 1 thinking"
+    assert state.last_text is None
+
+    # Step 2: step_start → text → step_finish(tool-calls)
+    translate_opencode_event(
+        _decode_event({"type": "step_start", "sessionID": "ses_multi", "part": {}}),
+        title="opencode",
+        state=state,
+    )
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_multi",
+                "part": {"type": "text", "text": "Step 2 analysis"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    step2_events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_multi",
+                "part": {"reason": "tool-calls"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    assert len(step2_events) == 1
+    assert isinstance(step2_events[0], TextFinishedEvent)
+    assert step2_events[0].text == "Step 2 analysis"
+    assert state.last_text is None
+
+    # Step 3: step_start → text → step_finish(stop) → CompletedEvent
+    translate_opencode_event(
+        _decode_event({"type": "step_start", "sessionID": "ses_multi", "part": {}}),
+        title="opencode",
+        state=state,
+    )
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_multi",
+                "part": {"type": "text", "text": "Final answer"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    step3_events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_multi",
+                "part": {"reason": "stop"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    assert len(step3_events) == 1
+    completed = step3_events[0]
+    assert isinstance(completed, CompletedEvent)
+    # Final answer must only contain the last step's text, not accumulated
+    assert completed.answer == "Final answer"
+    assert completed.ok is True
+
+
+def test_text_accumulated_within_step_is_correct() -> None:
+    """Text chunks within a single step are correctly accumulated."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+
+    # Simulate multiple text chunks within one step
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "Hello "},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "World"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    # step_finish(tool-calls) should emit the accumulated text
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_test123",
+                "part": {"reason": "tool-calls"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 1
+    assert isinstance(events[0], TextFinishedEvent)
+    assert events[0].text == "Hello World"
+    assert state.last_text is None
+
+    # Next step starts fresh
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "New step text"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    assert state.last_text == "New step text"
+
+
+# --- TextDeltaEvent tests ---
+
+
+def test_text_event_emits_text_delta() -> None:
+    """Each text event should emit a TextDeltaEvent with accumulated snapshot."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "Hello "},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 1
+    evt = events[0]
+    assert isinstance(evt, TextDeltaEvent)
+    assert evt.snapshot == "Hello "
+
+    # Second chunk accumulates
+    events2 = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "World"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events2) == 1
+    evt2 = events2[0]
+    assert isinstance(evt2, TextDeltaEvent)
+    assert evt2.snapshot == "Hello World"
+
+
+def test_text_event_empty_no_delta() -> None:
+    """Empty text events should not emit TextDeltaEvent."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": ""},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 0
+
+
+def test_text_delta_resets_after_text_finished() -> None:
+    """After TextFinishedEvent, next text delta starts fresh."""
+    state = OpenCodeStreamState()
+    state.session_id = "ses_test123"
+    state.emitted_started = True
+
+    # Accumulate text
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "Step 1"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    # step_finish(tool-calls) emits TextFinishedEvent and resets
+    translate_opencode_event(
+        _decode_event(
+            {
+                "type": "step_finish",
+                "sessionID": "ses_test123",
+                "part": {"reason": "tool-calls"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+    assert state.last_text is None
+
+    # Next text starts fresh
+    events = translate_opencode_event(
+        _decode_event(
+            {
+                "type": "text",
+                "sessionID": "ses_test123",
+                "part": {"type": "text", "text": "Step 2"},
+            }
+        ),
+        title="opencode",
+        state=state,
+    )
+
+    assert len(events) == 1
+    assert isinstance(events[0], TextDeltaEvent)
+    assert events[0].snapshot == "Step 2"

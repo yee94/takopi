@@ -10,6 +10,7 @@ from yee88.model import (
     ResumeToken,
     StartedEvent,
     TakopiEvent,
+    TextFinishedEvent,
 )
 
 
@@ -62,3 +63,8 @@ def action_completed(
         phase="completed",
         ok=ok,
     )
+
+
+def text_finished(text: str, engine: str = "codex") -> TakopiEvent:
+    engine_id: EngineId = engine
+    return TextFinishedEvent(engine=engine_id, text=text)

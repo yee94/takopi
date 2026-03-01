@@ -14,6 +14,7 @@ from .model import (
     EngineId,
     ResumeToken,
     StartedEvent,
+    TextFinishedEvent,
 )
 
 
@@ -124,6 +125,9 @@ class EventFactory:
             message=message,
             level=level,
         )
+
+    def text_finished(self, *, text: str) -> TextFinishedEvent:
+        return TextFinishedEvent(engine=self.engine, text=text)
 
     def completed(
         self,

@@ -32,6 +32,8 @@ from ..model import (
     ResumeToken,
     StartedEvent,
     TakopiEvent,
+    TextDeltaEvent,
+    TextFinishedEvent,
 )
 from ..runner import JsonlSubprocessRunner, ResumeTokenMixin, Runner
 from .run_options import get_run_options
@@ -242,6 +244,9 @@ def translate_opencode_event(
                     state.last_text = text
                 else:
                     state.last_text += text
+                return [
+                    TextDeltaEvent(engine=ENGINE, snapshot=state.last_text)
+                ]
             return []
 
         case opencode_schema.StepFinish(part=part):
@@ -262,6 +267,15 @@ def translate_opencode_event(
                         resume=resume,
                     )
                 ]
+
+            # tool-calls: emit intermediate text and reset for next step
+            if reason == "tool-calls" and state.last_text:
+                finished = TextFinishedEvent(
+                    engine=ENGINE,
+                    text=state.last_text,
+                )
+                state.last_text = None
+                return [finished]
             return []
 
         case opencode_schema.Error(error=error_value, message=message_value):

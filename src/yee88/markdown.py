@@ -169,6 +169,8 @@ def format_action_line(
 
 
 def render_event_cli(event: TakopiEvent) -> list[str]:
+    from .model import TextFinishedEvent
+
     match event:
         case StartedEvent(engine=engine):
             return [str(engine)]
@@ -184,6 +186,9 @@ def render_event_cli(event: TakopiEvent) -> list[str]:
                     command_width=MAX_PROGRESS_CMD_LEN,
                 )
             ]
+        case TextFinishedEvent(engine=engine, text=text):
+            preview = shorten(text, MAX_PROGRESS_CMD_LEN)
+            return [f"text_finished ({engine}): {preview}"]
         case _:
             return []
 
@@ -212,7 +217,16 @@ class MarkdownFormatter:
             label=label,
             engine=state.engine,
         )
-        body = self._assemble_body(self._format_actions(state))
+        body_lines: list[str] = []
+        # Show intermediate text segments from agent reasoning
+        for segment in state.text_segments:
+            body_lines.append(segment)
+        # Show current streaming text (live preview)
+        if state.streaming_text:
+            body_lines.append(state.streaming_text)
+        # Show action lines (tool calls)
+        body_lines.extend(self._format_actions(state))
+        body = self._assemble_body(body_lines)
         return MarkdownParts(
             header=header, body=body, footer=self._format_footer(state)
         )

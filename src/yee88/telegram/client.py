@@ -47,7 +47,7 @@ class TelegramClient:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = anyio.sleep,
         private_chat_rps: float = 1.0,
-        group_chat_rps: float = 20.0 / 60.0,
+        group_chat_rps: float = 1.0,
     ) -> None:
         if client is not None:
             if token is not None or http_client is not None:
