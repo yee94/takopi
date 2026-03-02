@@ -60,7 +60,8 @@ from .commands.handlers import (
 )
 from .commands.parse import is_cancel_command
 from .commands.reply import make_reply
-from .context import _merge_topic_context, _usage_ctx_set, _usage_topic
+from .context import _format_context, _merge_topic_context, _usage_ctx_set, _usage_topic
+from .files import format_bytes
 from .topics import (
     _maybe_rename_topic,
     _resolve_topics_scope,
@@ -1638,8 +1639,51 @@ async def run_main_loop(
                 )
                 if saved is None:
                     return
-                annotation = f"[uploaded file: {saved.rel_path.as_posix()}]"
+                annotation = f"[uploaded file: {saved.abs_path}]"
                 prompt = _build_upload_prompt(resolved.prompt, annotation)
+                await run_prompt_from_upload(msg, prompt, resolved)
+
+            async def handle_upload_and_forward(
+                msg: TelegramIncomingMessage,
+                ambient_context: RunContext | None,
+                topic_store: TopicStateStore | None,
+            ) -> None:
+                """Save file and forward its absolute path to AI."""
+                reply = make_reply(cfg, msg)
+                saved = await save_file_put(
+                    cfg,
+                    msg,
+                    "",
+                    ambient_context,
+                    topic_store,
+                )
+                if saved is None:
+                    return
+                abs_path = saved.abs_path
+                if cfg.files.use_global_tmp:
+                    await reply(
+                        text=f"saved `{abs_path}` ({format_bytes(saved.size)})",
+                    )
+                else:
+                    context_label = _format_context(
+                        cfg.runtime, saved.context
+                    )
+                    await reply(
+                        text=(
+                            f"saved `{saved.rel_path.as_posix()}` "
+                            f"in `{context_label}` "
+                            f"({format_bytes(saved.size)})"
+                        ),
+                    )
+                resolved = await resolve_prompt_message(
+                    msg,
+                    msg.text.strip() or "",
+                    ambient_context,
+                )
+                if resolved is None:
+                    return
+                annotation = f"[uploaded file: {abs_path}]"
+                prompt = _build_upload_prompt("", annotation)
                 await run_prompt_from_upload(msg, prompt, resolved)
 
             media_group_buffer = MediaGroupBuffer(
@@ -1837,8 +1881,7 @@ async def run_main_loop(
                             )
                         elif not caption_text:
                             tg.start_soon(
-                                handle_file_put_default,
-                                cfg,
+                                handle_upload_and_forward,
                                 msg,
                                 ambient_context,
                                 state.topic_store,

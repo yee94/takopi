@@ -417,7 +417,8 @@ async def test_prepare_file_put_plan_directive_error(tmp_path: Path) -> None:
 @pytest.mark.anyio
 async def test_prepare_file_put_plan_requires_context(tmp_path: Path) -> None:
     transport = FakeTransport()
-    cfg = make_cfg(transport)
+    files = TelegramFilesSettings(use_global_tmp=False)
+    cfg = replace(make_cfg(transport), files=files)
     msg = _msg("/file put")
 
     plan = await transfer._prepare_file_put_plan(
@@ -478,10 +479,12 @@ async def test_save_file_put_group_requires_documents(tmp_path: Path) -> None:
 @pytest.mark.anyio
 async def test_save_file_put_group_saves_documents(tmp_path: Path) -> None:
     transport = FakeTransport()
+    files = TelegramFilesSettings(use_global_tmp=False)
     cfg = replace(
         make_cfg(transport),
         runtime=_runtime(tmp_path),
         bot=_FileBot(file_info=File(file_path="files/doc.bin"), payload=b"payload"),
+        files=files,
     )
     msg = _msg(
         "/file put uploads/",
@@ -513,10 +516,12 @@ async def test_save_file_put_group_saves_documents(tmp_path: Path) -> None:
 @pytest.mark.anyio
 async def test_handle_file_put_saves_and_replies(tmp_path: Path) -> None:
     transport = FakeTransport()
+    files = TelegramFilesSettings(use_global_tmp=False)
     cfg = replace(
         make_cfg(transport),
         runtime=_runtime(tmp_path),
         bot=_FileBot(file_info=File(file_path="files/note.txt"), payload=b"hello"),
+        files=files,
     )
     msg = _msg("/file put note.txt", document=_document(file_name="note.txt"))
 
@@ -617,6 +622,7 @@ async def test_handle_file_put_group_formats_failures(
     msg = _msg("/file put uploads/")
     saved_group = transfer._SavedFilePutGroup(
         context=RunContext(project="proj", branch=None),
+        run_root=tmp_path,
         base_dir=Path("uploads"),
         saved=[
             transfer._FilePutResult(
@@ -635,6 +641,8 @@ async def test_handle_file_put_group_formats_failures(
             )
         ],
     )
+    files = TelegramFilesSettings(use_global_tmp=False)
+    cfg = replace(cfg, files=files)
 
     async def _fake_save(*_args, **_kwargs):
         return saved_group
@@ -908,10 +916,12 @@ async def test_handle_file_put_group_skips_when_no_save(monkeypatch) -> None:
 @pytest.mark.anyio
 async def test_handle_file_put_group_infers_dir(tmp_path: Path, monkeypatch) -> None:
     transport = FakeTransport()
-    cfg = replace(make_cfg(transport), runtime=_runtime(tmp_path))
+    files = TelegramFilesSettings(use_global_tmp=False)
+    cfg = replace(make_cfg(transport), runtime=_runtime(tmp_path), files=files)
     msg = _msg("/file put")
     saved_group = transfer._SavedFilePutGroup(
         context=RunContext(project="proj", branch=None),
+        run_root=tmp_path,
         base_dir=None,
         saved=[
             transfer._FilePutResult(

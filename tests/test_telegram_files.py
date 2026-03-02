@@ -109,3 +109,22 @@ def test_format_bytes_various_units() -> None:
 def test_default_upload_name_fallbacks() -> None:
     assert tg_files.default_upload_name("", "files/report.txt") == "report.txt"
     assert tg_files.default_upload_name(None, None) == "upload.bin"
+
+
+def test_global_uploads_dir_uses_system_temp() -> None:
+    """Test that global_uploads_dir returns a path under system temp directory."""
+    import tempfile
+
+    from yee88.settings import TelegramFilesSettings
+
+    global_dir = TelegramFilesSettings.global_uploads_dir()
+    assert global_dir.parent == Path(tempfile.gettempdir())
+    assert global_dir.name == "yee88-uploads"
+
+
+def test_use_global_tmp_default_enabled() -> None:
+    """Test that use_global_tmp is enabled by default."""
+    from yee88.settings import TelegramFilesSettings
+
+    settings = TelegramFilesSettings()
+    assert settings.use_global_tmp is True

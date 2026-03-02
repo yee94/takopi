@@ -81,17 +81,10 @@ class TelegramFilesSettings(BaseModel):
     enabled: bool = False
     auto_put: bool = True
     auto_put_mode: Literal["upload", "prompt"] = "upload"
+    use_global_tmp: bool = True
     uploads_dir: NonEmptyStr = "incoming"
     allowed_user_ids: list[StrictInt] = Field(default_factory=list)
-    deny_globs: list[NonEmptyStr] = Field(
-        default_factory=lambda: [
-            ".git/**",
-            ".env",
-            ".envrc",
-            "**/*.pem",
-            "**/.ssh/**",
-        ]
-    )
+    deny_globs: list[NonEmptyStr] = Field(default_factory=lambda: [])
 
     @field_validator("uploads_dir")
     @classmethod
@@ -99,6 +92,13 @@ class TelegramFilesSettings(BaseModel):
         if Path(value).is_absolute():
             raise ValueError("files.uploads_dir must be a relative path")
         return value
+
+    @staticmethod
+    def global_uploads_dir() -> Path:
+        """Return the global uploads directory path using system temp dir."""
+        import tempfile
+
+        return Path(tempfile.gettempdir()) / "yee88-uploads"
 
 
 class TelegramTransportSettings(BaseModel):

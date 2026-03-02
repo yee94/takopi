@@ -95,9 +95,14 @@ def resolve_path_within_root(root: Path, rel_path: Path) -> Path | None:
     return target
 
 
+_BUILTIN_DENY_NAMES: frozenset[str] = frozenset({".env", ".envrc"})
+
+
 def deny_reason(rel_path: Path, deny_globs: Sequence[str]) -> str | None:
     if ".git" in rel_path.parts:
         return ".git/**"
+    if rel_path.name in _BUILTIN_DENY_NAMES:
+        return rel_path.name
     posix = PurePosixPath(rel_path.as_posix())
     for pattern in deny_globs:
         if posix.match(pattern):

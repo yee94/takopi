@@ -54,13 +54,19 @@ class _FilePutResult:
 @dataclass(slots=True)
 class _SavedFilePut:
     context: RunContext | None
+    run_root: Path
     rel_path: Path
     size: int
+
+    @property
+    def abs_path(self) -> Path:
+        return self.run_root / self.rel_path
 
 
 @dataclass(slots=True)
 class _SavedFilePutGroup:
     context: RunContext | None
+    run_root: Path
     base_dir: Path | None
     saved: list[_FilePutResult]
     failed: list[_FilePutResult]
@@ -147,14 +153,17 @@ async def _prepare_file_put_plan(
         context=resolved.context,
         context_source=resolved.context_source,
     )
-    if resolved.context is None or resolved.context.project is None:
-        await reply(text="no project context available for file upload.")
-        return None
-    try:
-        run_root = cfg.runtime.resolve_run_cwd(resolved.context)
-    except ConfigError as exc:
-        await reply(text=f"error:\n{exc}")
-        return None
+    run_root: Path | None = None
+    if cfg.files.use_global_tmp:
+        # Always use global temp directory when use_global_tmp is enabled
+        run_root = cfg.files.global_uploads_dir()
+        run_root.mkdir(parents=True, exist_ok=True)
+    elif resolved.context is not None and resolved.context.project is not None:
+        try:
+            run_root = cfg.runtime.resolve_run_cwd(resolved.context)
+        except ConfigError as exc:
+            await reply(text=f"error:\n{exc}")
+            return None
     if run_root is None:
         await reply(text="no project context available for file upload.")
         return None
@@ -354,6 +363,7 @@ async def _save_file_put(
         return None
     return _SavedFilePut(
         context=plan.resolved.context,
+        run_root=plan.run_root,
         rel_path=result.rel_path,
         size=result.size,
     )
@@ -376,13 +386,18 @@ async def _handle_file_put(
     )
     if saved is None:
         return
-    context_label = _format_context(cfg.runtime, saved.context)
-    await reply(
-        text=(
-            f"saved `{saved.rel_path.as_posix()}` "
-            f"in `{context_label}` ({format_bytes(saved.size)})"
-        ),
-    )
+    if cfg.files.use_global_tmp:
+        await reply(
+            text=f"saved `{saved.abs_path}` ({format_bytes(saved.size)})",
+        )
+    else:
+        context_label = _format_context(cfg.runtime, saved.context)
+        await reply(
+            text=(
+                f"saved `{saved.rel_path.as_posix()}` "
+                f"in `{context_label}` ({format_bytes(saved.size)})"
+            ),
+        )
 
 
 async def _handle_file_put_group(
@@ -404,30 +419,41 @@ async def _handle_file_put_group(
     )
     if saved_group is None:
         return
-    context_label = _format_context(cfg.runtime, saved_group.context)
     total_bytes = sum(item.size or 0 for item in saved_group.saved)
-    dir_label: Path | None = saved_group.base_dir
-    if dir_label is None and saved_group.saved:
-        first_path = saved_group.saved[0].rel_path
-        if first_path is not None:
-            dir_label = first_path.parent
-    if saved_group.saved:
-        saved_names = ", ".join(f"`{item.name}`" for item in saved_group.saved)
-        if dir_label is not None:
-            dir_text = dir_label.as_posix()
-            if not dir_text.endswith("/"):
-                dir_text = f"{dir_text}/"
-            text = (
-                f"saved {saved_names} to `{dir_text}` "
-                f"in `{context_label}` ({format_bytes(total_bytes)})"
+    if cfg.files.use_global_tmp:
+        if saved_group.saved:
+            abs_paths = ", ".join(
+                f"`{(saved_group.run_root / item.rel_path).as_posix()}`"
+                for item in saved_group.saved
+                if item.rel_path is not None
             )
+            text = f"saved {abs_paths} ({format_bytes(total_bytes)})"
         else:
-            text = (
-                f"saved {saved_names} in `{context_label}` "
-                f"({format_bytes(total_bytes)})"
-            )
+            text = "failed to upload files."
     else:
-        text = "failed to upload files."
+        context_label = _format_context(cfg.runtime, saved_group.context)
+        dir_label: Path | None = saved_group.base_dir
+        if dir_label is None and saved_group.saved:
+            first_path = saved_group.saved[0].rel_path
+            if first_path is not None:
+                dir_label = first_path.parent
+        if saved_group.saved:
+            saved_names = ", ".join(f"`{item.name}`" for item in saved_group.saved)
+            if dir_label is not None:
+                dir_text = dir_label.as_posix()
+                if not dir_text.endswith("/"):
+                    dir_text = f"{dir_text}/"
+                text = (
+                    f"saved {saved_names} to `{dir_text}` "
+                    f"in `{context_label}` ({format_bytes(total_bytes)})"
+                )
+            else:
+                text = (
+                    f"saved {saved_names} in `{context_label}` "
+                    f"({format_bytes(total_bytes)})"
+                )
+        else:
+            text = "failed to upload files."
     failure_text = _format_file_put_failures(saved_group.failed)
     if failure_text is not None:
         text = f"{text}\n\n{failure_text}"
@@ -481,6 +507,7 @@ async def _save_file_put_group(
             failed.append(result)
     return _SavedFilePutGroup(
         context=plan.resolved.context,
+        run_root=plan.run_root,
         base_dir=base_dir,
         saved=saved,
         failed=failed,

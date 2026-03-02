@@ -117,7 +117,9 @@ async def _handle_media_group(
                 await reply(text=FILE_PUT_USAGE)
                 return
             paths = [
-                item.rel_path.as_posix()
+                (saved_group.run_root / item.rel_path).as_posix()
+                if cfg.files.use_global_tmp
+                else item.rel_path.as_posix()
                 for item in saved_group.saved
                 if item.rel_path is not None
             ]

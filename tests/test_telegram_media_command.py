@@ -126,6 +126,7 @@ async def test_media_group_auto_put_prompt_runs_prompt(monkeypatch) -> None:
     )
     saved_group = _SavedFilePutGroup(
         context=resolved.context,
+        run_root=Path("/tmp/yee88-uploads"),
         base_dir=None,
         saved=[
             _FilePutResult(
@@ -178,6 +179,7 @@ async def test_media_group_auto_put_prompt_saved_failure(monkeypatch) -> None:
     )
     saved_group = _SavedFilePutGroup(
         context=resolved.context,
+        run_root=Path("/tmp/yee88-uploads"),
         base_dir=None,
         saved=[],
         failed=[
