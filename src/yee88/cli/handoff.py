@@ -74,14 +74,14 @@ def _get_session_messages(session_id: str, limit: int = 5) -> list[dict]:
 
 
 def _get_session_model_id(session_id: str) -> str | None:
-    """从 OpenCode session 最近的 assistant 消息中提取 modelID。"""
+    """从 OpenCode session 最近的 assistant 消息中提取完整模型 ID (providerID/modelID)。"""
     if not OPENCODE_DB.exists():
         return None
     try:
         conn = sqlite3.connect(str(OPENCODE_DB))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        # 取最近一条 assistant 消息的 modelID
+        # 取最近一条 assistant 消息的 modelID 和 providerID
         cursor.execute(
             "SELECT data FROM message "
             "WHERE session_id = ? "
@@ -92,7 +92,11 @@ def _get_session_model_id(session_id: str) -> str | None:
             msg_data = json.loads(row["data"])
             model_id = msg_data.get("modelID")
             if model_id and msg_data.get("role") == "assistant":
+                provider_id = msg_data.get("providerID")
                 conn.close()
+                # 拼接完整模型 ID: providerID/modelID
+                if provider_id:
+                    return f"{provider_id}/{model_id}"
                 return model_id
         conn.close()
     except (sqlite3.Error, json.JSONDecodeError, OSError):
