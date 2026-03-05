@@ -95,6 +95,8 @@ yee88 config list | grep projects
 | "每周一提醒我..." | `yee88 cron add weekly "0 9 * * 1" "提醒内容"` |
 | "查看所有提醒" | `yee88 cron list` |
 | "删除提醒 X" | `yee88 cron remove X --force` |
+| "发送这个文件给我" | `yee88 send-file /path/to/file` |
+| "把这张图发给我" | `yee88 send-file /path/to/image.png` |
 
 ### 一次性提醒命令格式
 
@@ -550,6 +552,35 @@ yee88 handoff
 yee88 handoff -s ses_abc123 -n 5
 ```
 
+### 11. 发送文件/图片 (send-file)
+
+向 Telegram 发送文件或图片。自动检测文件类型：图片类型使用 sendPhoto（聊天中直接显示），其他类型使用 sendDocument（作为附件）。
+
+```bash
+yee88 send-file <file_path> [--chat-id <id>] [--thread-id <id>] [--caption <text>]
+```
+
+参数：
+- `<file_path>`: 文件路径（必填）
+- `--chat-id, -c`: Telegram chat ID（默认从配置或环境变量 `YEE88_CHAT_ID` 读取）
+- `--thread-id, -t`: Telegram thread ID（默认从环境变量 `YEE88_THREAD_ID` 读取）
+- `--caption`: 可选的文件说明
+
+**在 OpenCode 会话中使用时**，`YEE88_CHAT_ID` 和 `YEE88_THREAD_ID` 环境变量会自动注入，无需手动指定：
+
+```bash
+# OpenCode 会话中直接使用（环境变量自动注入）
+yee88 send-file /path/to/screenshot.png
+yee88 send-file /path/to/report.pdf --caption "今日报告"
+
+# 手动指定 chat_id（CLI 独立使用时）
+yee88 send-file /path/to/image.png --chat-id 123456789
+yee88 send-file /path/to/doc.pdf -c 123456789 -t 456
+```
+
+支持的图片格式（直接显示）：png, jpg, jpeg, gif, webp, bmp
+其他格式（作为附件）：pdf, zip, txt, csv, xlsx 等
+
 ## 完整命令速查表
 
 | 命令 | 说明 |
@@ -579,3 +610,4 @@ yee88 handoff -s ses_abc123 -n 5
 | `yee88 codex` | 使用 Codex 引擎 |
 | `yee88 opencode` | 使用 OpenCode 引擎 |
 | `yee88 pi` | 使用 Pi 引擎 |
+| `yee88 send-file <path>` | 发送文件/图片到 Telegram |
