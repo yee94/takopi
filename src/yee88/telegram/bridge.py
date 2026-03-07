@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from ..logging import get_logger
 from ..markdown import MarkdownFormatter, MarkdownParts
@@ -20,7 +20,12 @@ from ..settings import (
     TelegramTransportSettings,
 )
 from .client import BotClient
-from .render import MAX_BODY_CHARS, prepare_telegram, prepare_telegram_multi
+from .render import (
+    MAX_BODY_CHARS,
+    extract_image_urls,
+    prepare_telegram,
+    prepare_telegram_multi,
+)
 from .types import TelegramCallbackQuery, TelegramIncomingMessage
 
 logger = get_logger(__name__)
@@ -79,13 +84,22 @@ class TelegramPresenter:
         status: str,
         answer: str,
     ) -> RenderedMessage:
+        # Extract image URLs from the answer before rendering
+        image_urls: list[str] = []
+        if answer:
+            answer, image_urls = extract_image_urls(answer)
         parts = self._formatter.render_final_parts(
             state, elapsed_s=elapsed_s, status=status, answer=answer
         )
         if self._message_overflow == "split":
             payloads = prepare_telegram_multi(parts, max_body_chars=MAX_BODY_CHARS)
             text, entities = payloads[0]
-            extra = {"entities": entities, "reply_markup": CLEAR_MARKUP}
+            extra: dict[str, Any] = {
+                "entities": entities,
+                "reply_markup": CLEAR_MARKUP,
+            }
+            if image_urls:
+                extra["photo_urls"] = image_urls
             if len(payloads) > 1:
                 followups = [
                     RenderedMessage(
@@ -100,10 +114,10 @@ class TelegramPresenter:
                 extra["followups"] = followups
             return RenderedMessage(text=text, extra=extra)
         text, entities = prepare_telegram(parts)
-        return RenderedMessage(
-            text=text,
-            extra={"entities": entities, "reply_markup": CLEAR_MARKUP},
-        )
+        extra = {"entities": entities, "reply_markup": CLEAR_MARKUP}
+        if image_urls:
+            extra["photo_urls"] = image_urls
+        return RenderedMessage(text=text, extra=extra)
 
 
 def _is_cancelled_label(label: str) -> bool:
@@ -211,6 +225,17 @@ class TelegramTransport:
             )
             notify = bool(message.extra.get("followup_notify", True))
         followups = self._extract_followups(message)
+        # Send photo URLs extracted from the answer before the text message
+        photo_urls = message.extra.get("photo_urls")
+        if photo_urls and isinstance(photo_urls, list):
+            for url in photo_urls:
+                await self._bot.send_photo_url(
+                    chat_id=chat_id,
+                    photo_url=url,
+                    reply_to_message_id=reply_to_message_id,
+                    message_thread_id=message_thread_id,
+                    disable_notification=not notify,
+                )
         sent = await self._bot.send_message(
             chat_id=chat_id,
             text=message.text,

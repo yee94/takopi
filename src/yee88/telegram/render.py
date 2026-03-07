@@ -14,6 +14,7 @@ MAX_BODY_CHARS = 3500
 _MD_RENDERER = MarkdownIt("commonmark", {"html": False})
 _BULLET_RE = re.compile(r"(?m)^(\s*)•")
 _FENCE_RE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>[`~]{3,})(?P<info>.*)$")
+_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\((https?://[^)]+)\)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +22,26 @@ class _FenceState:
     fence: str
     indent: str
     header: str
+
+
+def extract_image_urls(text: str) -> tuple[str, list[str]]:
+    """Extract Markdown image URLs from text and return cleaned text + URL list.
+
+    Finds all ``![alt](url)`` patterns, collects the URLs, and removes the
+    image markup from the text.  Blank lines left behind by removal are
+    collapsed so the resulting text stays tidy.
+    """
+    urls: list[str] = []
+
+    def _collect(m: re.Match[str]) -> str:
+        urls.append(m.group(2))
+        return ""
+
+    cleaned = _IMAGE_RE.sub(_collect, text)
+    # Collapse runs of blank lines left after image removal
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    cleaned = cleaned.strip()
+    return cleaned, urls
 
 
 def render_markdown(md: str) -> tuple[str, list[dict[str, Any]]]:

@@ -17,6 +17,7 @@ type ActionKind = Literal[
     "turn",
     "warning",
     "telemetry",
+    "question",
 ]
 
 type TakopiEventType = Literal[

@@ -15,7 +15,11 @@ from ...model import Action, ActionEvent, EngineId, ResumeToken, TakopiEvent
 from ...progress import ProgressTracker
 from ...router import RunnerUnavailableError
 from ...runner import Runner
-from ...runners.run_options import EngineRunOptions, apply_run_options, apply_runtime_env
+from ...runners.run_options import (
+    EngineRunOptions,
+    apply_run_options,
+    apply_runtime_env,
+)
 from ...runner_bridge import (
     ExecBridgeConfig,
     IncomingMessage as RunnerIncomingMessage,
@@ -163,6 +167,8 @@ async def _run_engine(
     show_resume_line: bool = True,
     progress_ref: MessageRef | None = None,
     run_options: EngineRunOptions | None = None,
+    on_question: Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]
+    | None = None,
 ) -> None:
     reply = partial(
         send_plain,
@@ -242,6 +248,7 @@ async def _run_engine(
                     running_tasks=running_tasks,
                     on_thread_known=on_thread_known,
                     progress_ref=progress_ref,
+                    on_question=on_question,
                 )
         finally:
             reset_run_base_dir(run_base_token)

@@ -20,7 +20,7 @@ from ..cron.models import CronJob
 from ..commands import list_command_ids
 from ..directives import DirectiveError
 from ..logging import get_logger
-from ..model import EngineId, ResumeToken
+from ..model import ActionEvent, EngineId, ResumeToken
 from ..runners.run_options import EngineRunOptions
 from ..scheduler import ThreadJob, ThreadScheduler
 from ..progress import ProgressTracker
@@ -34,6 +34,11 @@ from .commands.cancel import handle_callback_cancel, handle_cancel
 from .commands.model import (
     MODEL_SELECT_CALLBACK_PREFIX,
     handle_model_select_callback,
+)
+from .commands.question import (
+    QUESTION_CALLBACK_PREFIX,
+    handle_question_callback,
+    send_question_message,
 )
 from .commands.file_transfer import FILE_PUT_USAGE
 from .commands.handlers import (
@@ -119,9 +124,7 @@ async def _resolve_engine_run_options(
         topic_override = await topic_store.get_engine_override(
             chat_id, thread_id, engine
         )
-        topic_system_prompt = await topic_store.get_system_prompt(
-            chat_id, thread_id
-        )
+        topic_system_prompt = await topic_store.get_system_prompt(chat_id, thread_id)
     chat_override = None
     # When running inside a topic (thread_id is set), do NOT fall back
     # to chat-level overrides – each topic should be independent.
@@ -711,7 +714,11 @@ class ResumeResolver:
             project = self._cfg.runtime.projects.projects.get(context.project)
             if project is not None and project.session_mode == "stateless":
                 project_stateless = True
-        if self._topic_store is not None and topic_key is not None and not project_stateless:
+        if (
+            self._topic_store is not None
+            and topic_key is not None
+            and not project_stateless
+        ):
             stored = await self._topic_store.get_session_resume(
                 topic_key[0],
                 topic_key[1],
@@ -1202,6 +1209,70 @@ async def run_main_loop(
 
             tg.start_soon(run_signal_watcher)
 
+            # --- Question tool support ---
+            # Tracks pending question actions so callback queries can resolve them.
+            _questions_pending: dict[str, ActionEvent] = {}
+            _question_resume_tokens: dict[str, ResumeToken | None] = {}
+            _question_chat_info: dict[str, tuple[int, int | None]] = {}
+
+            def _make_on_question(
+                chat_id: int,
+                thread_id: int | None,
+            ) -> Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]:
+                async def _on_question(
+                    evt: ActionEvent, resume: ResumeToken | None
+                ) -> None:
+                    action_id = evt.action.id
+                    _questions_pending[action_id] = evt
+                    _question_resume_tokens[action_id] = resume
+                    _question_chat_info[action_id] = (chat_id, thread_id)
+                    await send_question_message(
+                        cfg,
+                        chat_id=chat_id,
+                        action_event=evt,
+                        thread_id=thread_id,
+                    )
+
+                return _on_question
+
+            async def _handle_question_answer(
+                query: TelegramCallbackQuery,
+            ) -> None:
+                answer = await handle_question_callback(
+                    cfg,
+                    query,
+                    _questions_pending,
+                    _question_resume_tokens,
+                )
+                if answer is None:
+                    return
+                # Find the chat/thread for this question and send the answer
+                # as a new message via resume session.
+                chat_info = _question_chat_info.pop(
+                    query.data.split(":")[2] if query.data else "", None
+                )
+                if chat_info is None:
+                    return
+                q_chat_id, q_thread_id = chat_info
+                # Cancel the blocked running task (if any) by finding it
+                # in running_tasks for this chat.
+                for ref, task in list(state.running_tasks.items()):
+                    if ref.channel_id == q_chat_id and not task.done.is_set():
+                        task.cancel_requested.set()
+                        # Wait briefly for cancellation to take effect
+                        with anyio.move_on_after(2.0):
+                            await task.done.wait()
+                        break
+                # Send the answer as a reply message to resume the session
+                answer_text = f"My answer to your question: {answer}"
+                await send_plain(
+                    cfg.exec_cfg.transport,
+                    chat_id=q_chat_id,
+                    user_msg_id=query.message_id,
+                    thread_id=q_thread_id,
+                    text=f"✅ {answer}",
+                )
+
             def wrap_on_thread_known(
                 base_cb: Callable[[ResumeToken, anyio.Event], Awaitable[None]] | None,
                 topic_key: tuple[int, int] | None,
@@ -1284,7 +1355,8 @@ async def run_main_loop(
                     engine_for_overrides,
                     chat_prefs=state.chat_prefs,
                     topic_store=state.topic_store,
-                    system_prompt=system_prompt or cfg.runtime.resolve_system_prompt(context),
+                    system_prompt=system_prompt
+                    or cfg.runtime.resolve_system_prompt(context),
                 )
                 if run_options_model:
                     if run_options is None:
@@ -1328,6 +1400,7 @@ async def run_main_loop(
                     show_resume_line=show_resume_line,
                     progress_ref=progress_ref,
                     run_options=run_options,
+                    on_question=_make_on_question(chat_id, thread_id),
                 )
 
             async def run_thread_job(job: ThreadJob) -> None:
@@ -1698,9 +1771,7 @@ async def run_main_loop(
                         text=f"saved `{abs_path}` ({format_bytes(saved.size)})",
                     )
                 else:
-                    context_label = _format_context(
-                        cfg.runtime, saved.context
-                    )
+                    context_label = _format_context(cfg.runtime, saved.context)
                     await reply(
                         text=(
                             f"saved `{saved.rel_path.as_posix()}` "
@@ -2029,6 +2100,13 @@ async def run_main_loop(
                         tg.start_soon(
                             handle_model_select_callback,
                             cfg,
+                            update,
+                        )
+                    elif update.data and update.data.startswith(
+                        QUESTION_CALLBACK_PREFIX
+                    ):
+                        tg.start_soon(
+                            _handle_question_answer,
                             update,
                         )
                     else:

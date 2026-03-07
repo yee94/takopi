@@ -88,6 +88,48 @@ class _Bot(BotClient):
         )
         raise AssertionError("send_document should not be called")
 
+    async def send_photo(
+        self,
+        chat_id: int,
+        filename: str,
+        content: bytes,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+        disable_notification: bool | None = False,
+        caption: str | None = None,
+    ) -> Message | None:
+        _ = (
+            chat_id,
+            filename,
+            content,
+            reply_to_message_id,
+            message_thread_id,
+            disable_notification,
+            caption,
+        )
+        raise AssertionError("send_photo should not be called")
+
+    async def send_photo_url(
+        self,
+        chat_id: int,
+        photo_url: str,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+        disable_notification: bool | None = False,
+        caption: str | None = None,
+        parse_mode: str | None = None,
+    ) -> Message | None:
+        _ = (
+            chat_id,
+            photo_url,
+            reply_to_message_id,
+            message_thread_id,
+            disable_notification,
+            caption,
+            parse_mode,
+        )
+        raise AssertionError("send_photo_url should not be called")
+
     async def edit_message_text(
         self,
         chat_id: int,

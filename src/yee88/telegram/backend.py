@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import random
 from pathlib import Path
 from typing import Literal
 
@@ -20,6 +19,7 @@ from .bridge import (
     run_main_loop,
 )
 from .client import TelegramClient
+from .greetings import build_greeting
 from .onboarding import check_setup, interactive_setup
 from .topics import _resolve_topics_scope_raw
 
@@ -40,6 +40,7 @@ def _build_startup_message(
     session_mode: Literal["stateless", "chat"],
     show_resume_line: bool,
     topics: TelegramTopicsSettings,
+    config_path: Path | None = None,
 ) -> str:
     # Collect engine warnings so the user knows if something is broken.
     missing_engines = list(runtime.missing_engine_ids())
@@ -54,19 +55,7 @@ def _build_startup_message(
     if failed_engines:
         warnings.append(f"failed to load: {', '.join(failed_engines)}")
 
-    greetings = [
-        "老板，我醒了，有什么吩咐? 🫡",
-        "来了来了，随时待命 💪",
-        "报到! 说吧，今天干点啥? 🤓",
-        "准备就绪，等你发话 🎯",
-        "上线了，老板尽管吩咐 🐶",
-        "打卡成功，开始营业~ 🏪",
-        "就位! 有活儿尽管派 🔥",
-        "嗨老板，想我了没? 😏",
-        "又是为老板打工的一天 🥱",
-        "醒了醒了，别催~ 😤",
-    ]
-    lines = [random.choice(greetings)]
+    lines = [build_greeting(config_path=config_path)]
     if warnings:
         lines.append("")
         lines.append(f"(engine warnings: {'; '.join(warnings)})")
@@ -111,6 +100,7 @@ class TelegramBackend(TransportBackend):
             session_mode=settings.session_mode,
             show_resume_line=settings.show_resume_line,
             topics=settings.topics,
+            config_path=config_path,
         )
         bot = TelegramClient(token)
         transport = TelegramTransport(bot)

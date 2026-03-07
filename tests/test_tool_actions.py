@@ -40,7 +40,7 @@ def test_tool_input_path_picks_first_match() -> None:
         ),
         ("todowrite", {}, "note", "update todos"),
         ("todoread", {}, "note", "read todos"),
-        ("askuserquestion", {}, "note", "ask user"),
+        ("askuserquestion", {}, "question", "ask user"),
         ("task", {"description": "do work"}, "subagent", "do work"),
         ("agent", {"prompt": "assist"}, "subagent", "assist"),
         ("unknown", {}, "tool", "unknown"),

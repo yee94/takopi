@@ -140,6 +140,11 @@ def _extract_tool_action(part: dict[str, Any]) -> Action | None:
         if path:
             detail["changes"] = [{"path": path, "kind": "update"}]
 
+    if kind == "question":
+        questions = tool_input.get("questions")
+        if isinstance(questions, list):
+            detail["questions"] = questions
+
     return Action(id=call_id, kind=kind, title=title, detail=detail)
 
 
@@ -244,9 +249,7 @@ def translate_opencode_event(
                     state.last_text = text
                 else:
                     state.last_text += text
-                return [
-                    TextDeltaEvent(engine=ENGINE, snapshot=state.last_text)
-                ]
+                return [TextDeltaEvent(engine=ENGINE, snapshot=state.last_text)]
             return []
 
         case opencode_schema.StepFinish(part=part):

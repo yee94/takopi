@@ -83,6 +83,32 @@ class FakeBot(BotClient):
         )
         return Message(message_id=1, chat=Chat(id=chat_id, type="private"))
 
+    async def send_photo(
+        self,
+        chat_id: int,
+        filename: str,
+        content: bytes,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+        disable_notification: bool | None = False,
+        caption: str | None = None,
+    ) -> Message | None:
+        self.calls.append("send_photo")
+        return Message(message_id=1, chat=Chat(id=chat_id, type="private"))
+
+    async def send_photo_url(
+        self,
+        chat_id: int,
+        photo_url: str,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+        disable_notification: bool | None = False,
+        caption: str | None = None,
+        parse_mode: str | None = None,
+    ) -> Message | None:
+        self.calls.append("send_photo_url")
+        return Message(message_id=1, chat=Chat(id=chat_id, type="private"))
+
     async def edit_message_text(
         self,
         chat_id: int,

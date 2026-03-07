@@ -439,6 +439,30 @@ async def test_telegram_transport_edit_wait_false_returns_ref() -> None:
             )
             return None
 
+        async def send_photo(
+            self,
+            chat_id: int,
+            filename: str,
+            content: bytes,
+            reply_to_message_id: int | None = None,
+            message_thread_id: int | None = None,
+            disable_notification: bool | None = False,
+            caption: str | None = None,
+        ) -> Message | None:
+            return None
+
+        async def send_photo_url(
+            self,
+            chat_id: int,
+            photo_url: str,
+            reply_to_message_id: int | None = None,
+            message_thread_id: int | None = None,
+            disable_notification: bool | None = False,
+            caption: str | None = None,
+            parse_mode: str | None = None,
+        ) -> Message | None:
+            return None
+
         async def edit_message_text(
             self,
             chat_id: int,

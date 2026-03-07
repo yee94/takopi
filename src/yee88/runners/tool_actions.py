@@ -80,8 +80,15 @@ def tool_kind_and_title(
     if name_lower in {"todowrite", "todoread"}:
         return "note", "update todos" if "write" in name_lower else "read todos"
 
-    if name_lower == "askuserquestion":
-        return "note", "ask user"
+    if name_lower in {"question", "askuserquestion"}:
+        questions = tool_input.get("questions")
+        if isinstance(questions, list) and questions:
+            first = questions[0]
+            if isinstance(first, dict):
+                header = first.get("header") or first.get("question", "")
+                label = str(header)[:60] if header else "question"
+                return "question", label
+        return "question", "ask user"
 
     if name_lower in {"task", "agent"}:
         desc = tool_input.get("description") or tool_input.get("prompt")

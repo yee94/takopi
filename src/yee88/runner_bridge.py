@@ -8,7 +8,7 @@ import anyio
 
 from .context import RunContext
 from .logging import bind_run_context, get_logger
-from .model import CompletedEvent, ResumeToken, StartedEvent, TakopiEvent
+from .model import ActionEvent, CompletedEvent, ResumeToken, StartedEvent, TakopiEvent
 from .runners.run_options import get_run_options
 from .presenter import Presenter
 from .markdown import render_event_cli
@@ -312,6 +312,8 @@ async def run_runner_with_cancel(
     edits: ProgressEdits,
     running_task: RunningTask | None,
     on_thread_known: Callable[[ResumeToken, anyio.Event], Awaitable[None]] | None,
+    on_question: Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]
+    | None = None,
 ) -> RunOutcome:
     outcome = RunOutcome()
     async with anyio.create_task_group() as tg:
@@ -333,6 +335,13 @@ async def run_runner_with_cancel(
                     elif isinstance(evt, CompletedEvent):
                         outcome.resume = evt.resume or outcome.resume
                         outcome.completed = evt
+                    elif (
+                        on_question is not None
+                        and isinstance(evt, ActionEvent)
+                        and evt.action.kind == "question"
+                        and evt.phase == "started"
+                    ):
+                        await on_question(evt, outcome.resume)
                     await edits.on_event(evt)
             finally:
                 tg.cancel_scope.cancel()
@@ -410,6 +419,8 @@ async def handle_message(
     | None = None,
     progress_ref: MessageRef | None = None,
     clock: Callable[[], float] = time.monotonic,
+    on_question: Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]
+    | None = None,
 ) -> None:
     logger.info(
         "handle.incoming",
@@ -488,6 +499,7 @@ async def handle_message(
                 edits=edits,
                 running_task=running_task,
                 on_thread_known=on_thread_known,
+                on_question=on_question,
             )
         except Exception as exc:
             error = exc
