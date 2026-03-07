@@ -32,11 +32,6 @@ class ResumeTokenMixin:
     engine: EngineId
     resume_re: re.Pattern[str]
 
-    def format_resume(self, token: ResumeToken) -> str:
-        if token.engine != self.engine:
-            raise RuntimeError(f"resume token is for engine {token.engine!r}")
-        return f"`{self.engine} resume {token.value}`"
-
     def is_resume_line(self, line: str) -> bool:
         return bool(self.resume_re.match(line))
 
@@ -711,8 +706,6 @@ class Runner(Protocol):
     model: str | None
 
     def is_resume_line(self, line: str) -> bool: ...
-
-    def format_resume(self, token: ResumeToken) -> str: ...
 
     def extract_resume(self, text: str | None) -> ResumeToken | None: ...
 

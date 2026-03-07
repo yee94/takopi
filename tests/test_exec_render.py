@@ -33,10 +33,6 @@ from tests.factories import (
 )
 
 
-def _format_resume(token) -> str:
-    return f"`codex resume {token.value}`"
-
-
 SAMPLE_EVENTS: list[TakopiEvent] = [
     session_started("codex", "0199a213-81c0-7800-8aa1-bbab2a035a53", title="Codex"),
     action_started("a-1", "command", "bash -lc ls"),
@@ -168,25 +164,36 @@ def test_progress_renderer_renders_progress_and_final() -> None:
     for evt in SAMPLE_EVENTS:
         tracker.note_event(evt)
 
-    state = tracker.snapshot(resume_formatter=_format_resume)
+    state = tracker.snapshot()
     formatter = MarkdownFormatter(max_actions=5)
     progress_parts = formatter.render_progress_parts(state, elapsed_s=3.0)
     progress = assemble_markdown_parts(progress_parts)
-    assert progress.startswith("working · codex · 3s · step 2")
+    # Progress: action lines in body, blockquote status in footer
     assert "✓ `bash -lc ls`" in progress
-    assert "`codex resume 0199a213-81c0-7800-8aa1-bbab2a035a53`" in progress
+    assert "⏳ 3s · step 2 · Codex" in progress
+    # All status lines use blockquote prefix
+    footer = progress_parts.footer or ""
+    for line in footer.splitlines():
+        if line.strip():
+            assert line.startswith("> ")
 
     final_parts = formatter.render_final_parts(
         state, elapsed_s=3.0, status="done", answer="answer"
     )
     final = assemble_markdown_parts(final_parts)
-    assert final.startswith("done · codex · 3s · step 2")
+    # Final: blockquote status header, answer body
+    assert "✅" in final
+    assert "3s" in final
+    assert "step 2" in final
+    assert "Codex" in final  # Title-cased engine name
+    assert "answer" in final
     assert "✓ `bash -lc ls`" not in final
     assert "Checking repository root for README" not in final
-    assert "answer" in final
-    assert final.rstrip().endswith(
-        "`codex resume 0199a213-81c0-7800-8aa1-bbab2a035a53`"
-    )
+    assert "🔄 回复继续" not in final
+    # All footer lines use blockquote prefix
+    for line in final_parts.header.splitlines():
+        if line.strip():
+            assert line.startswith("> ")
 
 
 def test_progress_renderer_footer_includes_ctx_before_resume() -> None:
@@ -195,15 +202,19 @@ def test_progress_renderer_footer_includes_ctx_before_resume() -> None:
         tracker.note_event(evt)
 
     state = tracker.snapshot(
-        resume_formatter=_format_resume,
         context_line="`ctx: z80 @feat/name`",
     )
     formatter = MarkdownFormatter(max_actions=5)
     parts = formatter.render_progress_parts(state, elapsed_s=0.0)
-    assert parts.footer == (
-        "`ctx: z80 @feat/name`"
-        f"{HARD_BREAK}`codex resume 0199a213-81c0-7800-8aa1-bbab2a035a53`"
-    )
+    footer = parts.footer or ""
+    # Status line with emoji
+    assert "> ⏳ 0s · step 2 · Codex" in footer
+    # Context on second line (ctx: converted to 📂 display format)
+    assert "📂 z80 @feat/name" in footer
+    # All lines use blockquote prefix
+    for line in footer.splitlines():
+        if line.strip():
+            assert line.startswith("> ")
 
 
 def test_progress_renderer_footer_includes_model() -> None:
@@ -212,17 +223,20 @@ def test_progress_renderer_footer_includes_model() -> None:
         tracker.note_event(evt)
 
     state = tracker.snapshot(
-        resume_formatter=_format_resume,
         context_line="`ctx: z80 @feat/name`",
         model="gpt-4.1-mini",
     )
     formatter = MarkdownFormatter(max_actions=5)
     parts = formatter.render_progress_parts(state, elapsed_s=0.0)
-    assert parts.footer == (
-        "`ctx: z80 @feat/name`"
-        f"{HARD_BREAK}`codex resume 0199a213-81c0-7800-8aa1-bbab2a035a53`"
-        f"{HARD_BREAK}`model: gpt-4.1-mini`"
-    )
+    footer = parts.footer or ""
+    # Model name is extracted and displayed in status line
+    assert "> ⏳ 0s · step 2 · GPT 4.1 Mini" in footer
+    # Context on second line (ctx: converted to 📂 display format)
+    assert "📂 z80 @feat/name" in footer
+    # All lines use blockquote prefix
+    for line in footer.splitlines():
+        if line.strip():
+            assert line.startswith("> ")
 
 
 def test_progress_renderer_clamps_actions_and_ignores_unknown() -> None:
@@ -430,10 +444,11 @@ def test_progress_renderer_ignores_missing_action_id() -> None:
     assert tracker.note_event(event) is False
 
     formatter = MarkdownFormatter()
-    header = assemble_markdown_parts(
+    rendered = assemble_markdown_parts(
         formatter.render_progress_parts(tracker.snapshot(), elapsed_s=0.0)
     )
-    assert header.startswith("working · codex · 0s")
+    assert "⏳ 0s" in rendered
+    assert "Codex" in rendered
 
 
 # --- TextFinishedEvent progress rendering tests ---
@@ -471,7 +486,7 @@ def test_progress_renders_text_segments_in_body() -> None:
     tracker.note_event(text_finished("I'll help you fix this", engine="opencode"))
     tracker.note_event(action_started("a-1", "command", "cat file.py", engine="opencode"))
 
-    state = tracker.snapshot(resume_formatter=_format_resume)
+    state = tracker.snapshot()
     formatter = MarkdownFormatter(max_actions=5)
     parts = formatter.render_progress_parts(state, elapsed_s=2.0)
     body = parts.body or ""
@@ -615,3 +630,154 @@ def test_progress_renders_streaming_text_after_text_segments() -> None:
     pos1 = body.index("Step 1 done")
     pos2 = body.index("Step 2 in progress")
     assert pos1 < pos2
+
+
+# --- extract_model_display_name tests ---
+
+
+def test_extract_model_display_name_simple_path() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("bailian/minimax-2.5") == "Minimax 2.5"
+
+
+def test_extract_model_display_name_gpt_abbreviation() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("gpt-4.1-mini") == "GPT 4.1 Mini"
+
+
+def test_extract_model_display_name_claude() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("anthropic/claude-4-opus") == "Claude 4 Opus"
+
+
+def test_extract_model_display_name_deep_path() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert (
+        extract_model_display_name("aonecopilot/ide-idealab/claude4.6-opus")
+        == "Claude4.6 Opus"
+    )
+
+
+def test_extract_model_display_name_plain_engine() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("opencode") == "Opencode"
+
+
+def test_extract_model_display_name_empty() -> None:
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("") == ""
+
+
+def test_extract_model_display_name_o_series() -> None:
+    """o1, o3, o4-mini should keep lowercase 'o' prefix."""
+    from yee88.markdown import extract_model_display_name
+
+    assert extract_model_display_name("o4-mini") == "o4 Mini"
+    assert extract_model_display_name("openai/o3") == "o3"
+
+
+# --- Blockquote footer format tests ---
+
+
+def test_final_footer_uses_blockquote_format() -> None:
+    """Final footer lines should start with '> ' for Telegram blockquote."""
+    tracker = ProgressTracker(engine="codex")
+    for evt in SAMPLE_EVENTS:
+        tracker.note_event(evt)
+
+    state = tracker.snapshot()
+    formatter = MarkdownFormatter(max_actions=5)
+    parts = formatter.render_final_parts(
+        state, elapsed_s=3.0, status="done", answer="answer"
+    )
+    # Footer is always at the bottom (parts.footer)
+    footer = parts.footer or ""
+    for line in footer.splitlines():
+        if line.strip():
+            assert line.startswith("> "), f"Line should start with '> ': {line!r}"
+
+
+def test_final_footer_extracts_model_display_name() -> None:
+    """Final footer should show extracted model display name."""
+    tracker = ProgressTracker(engine="opencode")
+    tracker.note_event(session_started("opencode", "ses_123", title="opencode"))
+
+    state = tracker.snapshot(model="bailian/minimax-2.5")
+    formatter = MarkdownFormatter()
+    parts = formatter.render_final_parts(
+        state, elapsed_s=5.0, status="done", answer="hello"
+    )
+    # Footer is now always at the bottom (parts.footer), not header
+    footer = parts.footer or ""
+    assert "Minimax 2.5" in footer
+
+
+def test_final_footer_with_context_line() -> None:
+    """Final footer should include context line in blockquote."""
+    tracker = ProgressTracker(engine="codex")
+    for evt in SAMPLE_EVENTS:
+        tracker.note_event(evt)
+
+    state = tracker.snapshot(
+        context_line="`ctx: takopi @master`",
+    )
+    formatter = MarkdownFormatter()
+    parts = formatter.render_final_parts(
+        state, elapsed_s=3.0, status="done", answer="answer"
+    )
+    # Footer is now always at the bottom (parts.footer), not header
+    footer = parts.footer or ""
+    assert "📂 takopi @master" in footer
+    assert "🔄 回复继续" not in footer
+
+
+def test_progress_footer_uses_blockquote_format() -> None:
+    """Progress footer lines should also use blockquote format."""
+    tracker = ProgressTracker(engine="codex")
+    for evt in SAMPLE_EVENTS:
+        tracker.note_event(evt)
+
+    state = tracker.snapshot(
+        context_line="`ctx: takopi @master`",
+    )
+    formatter = MarkdownFormatter(max_actions=5)
+    parts = formatter.render_progress_parts(state, elapsed_s=3.0)
+    footer = parts.footer or ""
+    for line in footer.splitlines():
+        if line.strip():
+            assert line.startswith("> "), f"Line should start with '> ': {line!r}"
+
+
+def test_progress_cancelled_uses_correct_emoji() -> None:
+    """Cancelled progress should use ⏹ emoji without extra resume hint."""
+    tracker = ProgressTracker(engine="codex")
+    for evt in SAMPLE_EVENTS:
+        tracker.note_event(evt)
+
+    state = tracker.snapshot()
+    formatter = MarkdownFormatter(max_actions=5)
+    parts = formatter.render_progress_parts(
+        state, elapsed_s=5.0, label="`cancelled`"
+    )
+    footer = parts.footer or ""
+    assert "⏹" in footer
+    assert "🔄 回复继续" not in footer
+    assert "Codex" in footer
+
+
+def test_progress_queued_shows_label() -> None:
+    """Queued progress should show 'queued' instead of elapsed time."""
+    tracker = ProgressTracker(engine="opencode")
+    state = tracker.snapshot()
+    formatter = MarkdownFormatter()
+    parts = formatter.render_progress_parts(state, elapsed_s=0.0, label="queued")
+    # When no body (no actions), status block is in header position
+    rendered = assemble_markdown_parts(parts)
+    assert "⏳ queued" in rendered
+    assert "Opencode" in rendered

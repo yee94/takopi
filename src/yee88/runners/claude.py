@@ -291,11 +291,6 @@ class ClaudeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
     session_title: str = "claude"
     logger = logger
 
-    def format_resume(self, token: ResumeToken) -> str:
-        if token.engine != ENGINE:
-            raise RuntimeError(f"resume token is for engine {token.engine!r}")
-        return f"`claude --resume {token.value}`"
-
     def _build_args(self, prompt: str, resume: ResumeToken | None) -> list[str]:
         run_options = get_run_options()
         args: list[str] = ["-p", "--output-format", "stream-json", "--verbose"]

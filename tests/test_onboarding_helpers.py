@@ -178,8 +178,8 @@ def test_build_transport_patch_requires_fields(tmp_path: Path) -> None:
         onboarding.build_transport_patch(state, bot_token="x")
 
     state.session_mode = "chat"
-    with pytest.raises(RuntimeError, match="missing resume choice"):
-        onboarding.build_transport_patch(state, bot_token="x")
+    patch = onboarding.build_transport_patch(state, bot_token="x")
+    assert patch["session_mode"] == "chat"
 
 
 def test_build_config_patch_and_merge(tmp_path: Path) -> None:
@@ -193,7 +193,6 @@ def test_build_config_patch_and_merge(tmp_path: Path) -> None:
         chat_type="private",
     )
     state.session_mode = "chat"
-    state.show_resume_line = False
     state.default_engine = "codex"
     state.topics_enabled = True
     state.topics_scope = "all"

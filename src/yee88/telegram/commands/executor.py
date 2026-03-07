@@ -13,6 +13,7 @@ from ...context import RunContext
 from ...logging import bind_run_context, clear_context, get_logger
 from ...model import Action, ActionEvent, EngineId, ResumeToken, TakopiEvent
 from ...progress import ProgressTracker
+from ...resume_cache import ResumeTokenCache
 from ...router import RunnerUnavailableError
 from ...runner import Runner
 from ...runners.run_options import (
@@ -22,6 +23,7 @@ from ...runners.run_options import (
 )
 from ...runner_bridge import (
     ExecBridgeConfig,
+    HandleResult,
     IncomingMessage as RunnerIncomingMessage,
     RunningTasks,
     handle_message,
@@ -37,33 +39,6 @@ logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
-class _ResumeLineProxy:
-    runner: Runner
-
-    @property
-    def engine(self) -> str:
-        return self.runner.engine
-
-    @property
-    def model(self) -> str | None:
-        return self.runner.model
-
-    def is_resume_line(self, line: str) -> bool:
-        return self.runner.is_resume_line(line)
-
-    def format_resume(self, _: ResumeToken) -> str:
-        return ""
-
-    def extract_resume(self, text: str | None) -> ResumeToken | None:
-        return self.runner.extract_resume(text)
-
-    def run(
-        self, prompt: str, resume: ResumeToken | None
-    ) -> AsyncIterator[TakopiEvent]:
-        return self.runner.run(prompt, resume)
-
-
-@dataclass(slots=True)
 class _PreludeRunner:
     runner: Runner
     prelude_events: Sequence[TakopiEvent]
@@ -74,9 +49,6 @@ class _PreludeRunner:
 
     def is_resume_line(self, line: str) -> bool:
         return self.runner.is_resume_line(line)
-
-    def format_resume(self, token: ResumeToken) -> str:
-        return self.runner.format_resume(token)
 
     def extract_resume(self, text: str | None) -> ResumeToken | None:
         return self.runner.extract_resume(text)
@@ -111,17 +83,6 @@ def _reasoning_warning(
     )
 
 
-def _should_show_resume_line(
-    *,
-    show_resume_line: bool,
-    stateful_mode: bool,
-    context: RunContext | None,
-) -> bool:
-    if show_resume_line:
-        return True
-    return not stateful_mode
-
-
 async def _send_runner_unavailable(
     exec_cfg: ExecBridgeConfig,
     *,
@@ -134,7 +95,7 @@ async def _send_runner_unavailable(
 ) -> None:
     tracker = ProgressTracker(engine=runner.engine)
     tracker.set_resume(resume_token)
-    state = tracker.snapshot(resume_formatter=runner.format_resume, model=runner.model)
+    state = tracker.snapshot(model=runner.model)
     message = exec_cfg.presenter.render_final(
         state,
         elapsed_s=0.0,
@@ -164,12 +125,11 @@ async def _run_engine(
     | None = None,
     engine_override: EngineId | None = None,
     thread_id: int | None = None,
-    show_resume_line: bool = True,
     progress_ref: MessageRef | None = None,
     run_options: EngineRunOptions | None = None,
     on_question: Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]
     | None = None,
-) -> None:
+) -> HandleResult:
     reply = partial(
         send_plain,
         exec_cfg.transport,
@@ -177,6 +137,7 @@ async def _run_engine(
         user_msg_id=user_msg_id,
         thread_id=thread_id,
     )
+    result = HandleResult()
     try:
         try:
             entry = runtime.resolve_runner(
@@ -185,10 +146,8 @@ async def _run_engine(
             )
         except RunnerUnavailableError as exc:
             await reply(text=f"error:\n{exc}")
-            return
+            return result
         runner: Runner = entry.runner
-        if not show_resume_line:
-            runner = cast(Runner, _ResumeLineProxy(runner))
         warning = _reasoning_warning(engine=runner.engine, run_options=run_options)
         if warning is not None:
             runner = cast(Runner, _PreludeRunner(runner, [warning]))
@@ -203,12 +162,12 @@ async def _run_engine(
                 reason=reason,
                 thread_id=thread_id,
             )
-            return
+            return result
         try:
             cwd = runtime.resolve_run_cwd(context)
         except ConfigError as exc:
             await reply(text=f"error:\n{exc}")
-            return
+            return result
         run_base_token = set_run_base_dir(cwd)
         try:
             run_fields = {
@@ -237,7 +196,7 @@ async def _run_engine(
             if thread_id is not None:
                 runtime_env["YEE88_THREAD_ID"] = str(thread_id)
             with apply_run_options(run_options), apply_runtime_env(runtime_env):
-                await handle_message(
+                result = await handle_message(
                     exec_cfg,
                     runner=runner,
                     incoming=incoming,
@@ -260,6 +219,7 @@ async def _run_engine(
         )
     finally:
         clear_context()
+    return result
 
 
 class _CaptureTransport:
@@ -313,9 +273,8 @@ class _TelegramCommandExecutor(CommandExecutor):
         chat_id: int,
         user_msg_id: int,
         thread_id: int | None,
-        show_resume_line: bool,
-        stateful_mode: bool,
         default_engine_override: EngineId | None,
+        resume_cache: ResumeTokenCache | None = None,
     ) -> None:
         self._exec_cfg = exec_cfg
         self._runtime = runtime
@@ -326,9 +285,8 @@ class _TelegramCommandExecutor(CommandExecutor):
         self._chat_id = chat_id
         self._user_msg_id = user_msg_id
         self._thread_id = thread_id
-        self._show_resume_line = show_resume_line
-        self._stateful_mode = stateful_mode
         self._default_engine_override = default_engine_override
+        self._resume_cache = resume_cache
         self._reply_ref = MessageRef(
             channel_id=chat_id,
             message_id=user_msg_id,
@@ -384,11 +342,6 @@ class _TelegramCommandExecutor(CommandExecutor):
     ) -> RunResult:
         request = self._apply_default_context(request)
         request = self._apply_default_engine(request)
-        effective_show_resume_line = _should_show_resume_line(
-            show_resume_line=self._show_resume_line,
-            stateful_mode=self._stateful_mode,
-            context=request.context,
-        )
         engine = self._runtime.resolve_engine(
             engine_override=request.engine,
             context=request.context,
@@ -436,7 +389,6 @@ class _TelegramCommandExecutor(CommandExecutor):
                 on_thread_known=on_thread_known,
                 engine_override=engine,
                 thread_id=self._thread_id,
-                show_resume_line=effective_show_resume_line,
                 run_options=run_options,
             )
             return RunResult(engine=engine, message=capture.last_message)
@@ -453,7 +405,6 @@ class _TelegramCommandExecutor(CommandExecutor):
             on_thread_known=on_thread_known,
             engine_override=engine,
             thread_id=self._thread_id,
-            show_resume_line=effective_show_resume_line,
             run_options=run_options,
         )
         return RunResult(engine=engine, message=None)

@@ -90,7 +90,6 @@ def _make_state() -> ProgressState:
         action_count=0,
         actions=(),
         resume=None,
-        resume_line=None,
         context_line=None,
     )
 

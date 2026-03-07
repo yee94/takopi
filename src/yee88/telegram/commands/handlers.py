@@ -5,7 +5,6 @@ from __future__ import annotations
 from .agent import _handle_agent_command as handle_agent_command
 from .dispatch import _dispatch_command as dispatch_command
 from .executor import _run_engine as run_engine
-from .executor import _should_show_resume_line as should_show_resume_line
 from .file_transfer import _handle_file_command as handle_file_command
 from .file_transfer import _handle_file_put_default as handle_file_put_default
 from .file_transfer import _save_file_put as save_file_put
@@ -43,5 +42,4 @@ __all__ = [
     "run_engine",
     "save_file_put",
     "set_command_menu",
-    "should_show_resume_line",
 ]

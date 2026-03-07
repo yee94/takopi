@@ -59,8 +59,6 @@ async def _dispatch_command(
         chat_id=chat_id,
         user_msg_id=user_msg_id,
         thread_id=msg.thread_id,
-        show_resume_line=cfg.show_resume_line,
-        stateful_mode=stateful_mode,
         default_engine_override=default_engine_override,
     )
     message_ref = MessageRef(

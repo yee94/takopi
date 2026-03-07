@@ -3,7 +3,12 @@ import uuid
 import anyio
 import pytest
 
-from yee88.runner_bridge import ExecBridgeConfig, IncomingMessage, handle_message
+from yee88.runner_bridge import (
+    ExecBridgeConfig,
+    HandleResult,
+    IncomingMessage,
+    handle_message,
+)
 from yee88.markdown import MarkdownParts, MarkdownPresenter
 from yee88.model import ResumeToken, TakopiEvent
 from yee88.telegram.render import prepare_telegram
@@ -246,7 +251,8 @@ async def test_long_final_message_edits_progress_message() -> None:
     assert len(transport.send_calls) == 1
     assert transport.send_calls[0]["options"].notify is False
     assert transport.edit_calls
-    assert "done" in transport.edit_calls[-1]["message"].text.lower()
+    final_text = transport.edit_calls[-1]["message"].text
+    assert "✅" in final_text or "done" in final_text.lower()
 
 
 @pytest.mark.anyio
@@ -283,7 +289,8 @@ async def test_progress_edits_are_best_effort() -> None:
 
     assert transport.edit_calls
     assert all(call["wait"] is False for call in transport.edit_calls)
-    assert "working" in transport.edit_calls[-1]["message"].text.lower()
+    # Progress edits now use blockquote emoji format
+    assert "⏳" in transport.edit_calls[-1]["message"].text
 
 
 @pytest.mark.anyio
@@ -317,7 +324,7 @@ async def test_bridge_flow_sends_progress_edits_and_final_resume() -> None:
         final_notify=True,
     )
 
-    await handle_message(
+    result = await handle_message(
         cfg,
         runner=runner,
         incoming=IncomingMessage(channel_id=123, message_id=42, text="do it"),
@@ -326,11 +333,14 @@ async def test_bridge_flow_sends_progress_edits_and_final_resume() -> None:
     )
 
     assert transport.send_calls[0]["options"].reply_to.message_id == 42
-    assert "starting" in transport.send_calls[0]["message"].text
-    assert "codex" in transport.send_calls[0]["message"].text
+    # Progress uses blockquote emoji format
+    assert "⏳" in transport.send_calls[0]["message"].text
+    assert "Codex" in transport.send_calls[0]["message"].text
     assert len(transport.edit_calls) >= 1
-    assert session_id in transport.send_calls[-1]["message"].text
-    assert "codex resume" in transport.send_calls[-1]["message"].text.lower()
+    # Resume token is returned via HandleResult, not displayed in message text
+    assert result.resume_token is not None
+    assert result.resume_token.value == session_id
+    assert "🔄" not in transport.send_calls[-1]["message"].text
     assert transport.send_calls[-1]["options"].replace == transport.send_calls[0]["ref"]
 
 
@@ -350,7 +360,7 @@ async def test_final_message_includes_ctx_line() -> None:
         final_notify=True,
     )
 
-    await handle_message(
+    result = await handle_message(
         cfg,
         runner=runner,
         incoming=IncomingMessage(channel_id=123, message_id=42, text="do it"),
@@ -361,8 +371,10 @@ async def test_final_message_includes_ctx_line() -> None:
 
     assert transport.send_calls
     final_text = transport.send_calls[-1]["message"].text
-    assert "`ctx: yee88 @feat/api`" in final_text
-    assert "codex resume" in final_text.lower()
+    assert "📂 yee88 @feat/api" in final_text
+    # Resume token is returned via HandleResult, not displayed in message text
+    assert result.resume_token is not None
+    assert result.resume_token.value == session_id
 
 
 @pytest.mark.anyio
@@ -408,8 +420,9 @@ async def test_handle_message_cancelled_renders_cancelled_state() -> None:
     assert len(transport.send_calls) == 1  # Progress message
     assert len(transport.edit_calls) >= 1
     last_edit = transport.edit_calls[-1]["message"].text
-    assert "cancelled" in last_edit.lower()
-    assert session_id in last_edit
+    # Cancelled uses ⏹ emoji in blockquote format
+    assert "⏹" in last_edit
+    assert "🔄 回复继续" not in last_edit
 
 
 @pytest.mark.anyio
@@ -427,7 +440,7 @@ async def test_handle_message_error_preserves_resume_token() -> None:
         final_notify=True,
     )
 
-    await handle_message(
+    result = await handle_message(
         cfg,
         runner=runner,
         incoming=IncomingMessage(channel_id=123, message_id=10, text="do something"),
@@ -436,6 +449,7 @@ async def test_handle_message_error_preserves_resume_token() -> None:
 
     assert transport.edit_calls
     last_edit = transport.edit_calls[-1]["message"].text
-    assert "error" in last_edit.lower()
-    assert session_id in last_edit
-    assert "codex resume" in last_edit.lower()
+    assert "❌" in last_edit or "error" in last_edit.lower()
+    # Resume token is returned via HandleResult, not displayed in message text
+    assert result.resume_token is not None
+    assert result.resume_token.value == session_id

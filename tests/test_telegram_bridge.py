@@ -681,7 +681,7 @@ async def test_handle_cancel_cancels_queued_job() -> None:
     await handle_cancel(cfg, msg, {}, scheduler)
 
     assert transport.edit_calls
-    assert "cancelled" in transport.edit_calls[0]["message"].text.lower()
+    assert "⏹" in transport.edit_calls[0]["message"].text
     assert await scheduler.cancel_queued(123, progress_ref.message_id) is None
 
 
@@ -725,7 +725,7 @@ async def test_handle_file_put_writes_file(tmp_path: Path) -> None:
         exec_cfg=exec_cfg,
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
-        files=TelegramFilesSettings(enabled=True),
+        files=TelegramFilesSettings(enabled=True, use_global_tmp=False),
     )
     msg = TelegramIncomingMessage(
         transport="telegram",
@@ -869,7 +869,7 @@ async def test_handle_callback_cancel_cancels_queued_job() -> None:
     await handle_callback_cancel(cfg, query, {}, scheduler)
 
     assert transport.edit_calls
-    assert "cancelled" in transport.edit_calls[0]["message"].text.lower()
+    assert "⏹" in transport.edit_calls[0]["message"].text
     bot = cast(FakeBot, cfg.bot)
     assert bot.callback_calls
     assert bot.callback_calls[-1]["text"] == "dropped from queue."
@@ -1557,7 +1557,7 @@ async def test_send_with_resume_reports_when_missing() -> None:
 
 
 @pytest.mark.anyio
-async def test_run_engine_hides_resume_line_in_topics() -> None:
+async def test_run_engine_does_not_render_resume_token() -> None:
     transport = _CaptureTransport()
     runner = ScriptRunner(
         [Return(answer="ok")],
@@ -1587,7 +1587,6 @@ async def test_run_engine_hides_resume_line_in_topics() -> None:
         on_thread_known=None,
         engine_override=None,
         thread_id=77,
-        show_resume_line=False,
     )
 
     assert transport.last_message is not None
@@ -1975,6 +1974,7 @@ async def test_run_main_loop_prompt_upload_uses_caption_directives(
             enabled=True,
             auto_put=True,
             auto_put_mode="prompt",
+            use_global_tmp=False,
         ),
     )
 
@@ -2253,6 +2253,7 @@ async def test_run_main_loop_forwarded_document_still_uploads(
             enabled=True,
             auto_put=True,
             auto_put_mode="prompt",
+            use_global_tmp=False,
         ),
     )
 
@@ -2346,6 +2347,7 @@ async def test_run_main_loop_prompt_upload_auto_resumes_chat_sessions(
             enabled=True,
             auto_put=True,
             auto_put_mode="prompt",
+            use_global_tmp=False,
         ),
     )
 
@@ -2481,7 +2483,6 @@ async def test_run_main_loop_command_updates_chat_session_resume(
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
         session_mode="chat",
-        show_resume_line=False,
     )
 
     async def poller(_cfg: TelegramBridgeConfig):
@@ -2523,7 +2524,6 @@ async def test_run_main_loop_command_updates_chat_session_resume(
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
         session_mode="chat",
-        show_resume_line=False,
     )
 
     async def poller2(_cfg: TelegramBridgeConfig):
@@ -2547,7 +2547,7 @@ async def test_run_main_loop_command_updates_chat_session_resume(
 
 
 @pytest.mark.anyio
-async def test_run_main_loop_hides_resume_line_when_disabled(
+async def test_run_main_loop_does_not_render_resume_token_with_context(
     tmp_path: Path,
 ) -> None:
     resume_value = "resume-123"
@@ -2589,7 +2589,6 @@ async def test_run_main_loop_hides_resume_line_when_disabled(
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
         session_mode="chat",
-        show_resume_line=False,
     )
 
     async def poller(_cfg: TelegramBridgeConfig):
@@ -2612,7 +2611,7 @@ async def test_run_main_loop_hides_resume_line_when_disabled(
 
 
 @pytest.mark.anyio
-async def test_run_main_loop_hides_resume_line_without_context(
+async def test_run_main_loop_does_not_render_resume_token_without_context(
     tmp_path: Path,
 ) -> None:
     resume_value = "resume-ctxless"
@@ -2644,7 +2643,6 @@ async def test_run_main_loop_hides_resume_line_without_context(
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
         session_mode="chat",
-        show_resume_line=False,
     )
 
     async def poller(_cfg: TelegramBridgeConfig):
@@ -2712,7 +2710,6 @@ async def test_run_main_loop_applies_chat_bound_context(
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=FAST_MEDIA_GROUP_DEBOUNCE_S,
         session_mode="chat",
-        show_resume_line=False,
     )
 
     async def poller(_cfg: TelegramBridgeConfig):
@@ -2731,7 +2728,7 @@ async def test_run_main_loop_applies_chat_bound_context(
 
     assert transport.send_calls
     final_text = transport.send_calls[-1]["message"].text
-    assert "`ctx: Beta`" in final_text
+    assert "📂 Beta" in final_text
 
 
 @pytest.mark.anyio
@@ -3016,7 +3013,11 @@ async def test_run_main_loop_batches_media_group_upload(
         exec_cfg=exec_cfg,
         forward_coalesce_s=FAST_FORWARD_COALESCE_S,
         media_group_debounce_s=BATCH_MEDIA_GROUP_DEBOUNCE_S,
-        files=TelegramFilesSettings(enabled=True, auto_put=True),
+        files=TelegramFilesSettings(
+            enabled=True,
+            auto_put=True,
+            use_global_tmp=False,
+        ),
     )
     msg1 = TelegramIncomingMessage(
         transport="telegram",

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections.abc import Callable
 
 from .model import (
     Action,
@@ -31,7 +30,6 @@ class ProgressState:
     action_count: int
     actions: tuple[ActionState, ...]
     resume: ResumeToken | None
-    resume_line: str | None
     context_line: str | None
     model: str | None = None
     text_segments: tuple[str, ...] = ()
@@ -101,13 +99,9 @@ class ProgressTracker:
     def snapshot(
         self,
         *,
-        resume_formatter: Callable[[ResumeToken], str] | None = None,
         context_line: str | None = None,
         model: str | None = None,
     ) -> ProgressState:
-        resume_line: str | None = None
-        if self.resume is not None and resume_formatter is not None:
-            resume_line = resume_formatter(self.resume)
         actions = tuple(
             sorted(self._actions.values(), key=lambda item: item.first_seen)
         )
@@ -116,7 +110,6 @@ class ProgressTracker:
             action_count=self.action_count,
             actions=actions,
             resume=self.resume,
-            resume_line=resume_line,
             context_line=context_line,
             model=model,
             text_segments=tuple(self._text_segments),

@@ -287,11 +287,6 @@ class PiRunner(ResumeTokenMixin, JsonlSubprocessRunner):
         self.model = model
         self.provider = provider
 
-    def format_resume(self, token: ResumeToken) -> str:
-        if token.engine != ENGINE:
-            raise RuntimeError(f"resume token is for engine {token.engine!r}")
-        return f"`pi --session {self._quote_token(token.value)}`"
-
     def run(
         self, prompt: str, resume: ResumeToken | None
     ) -> AsyncIterator[TakopiEvent]:

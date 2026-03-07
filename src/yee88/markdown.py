@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,11 +12,78 @@ from .transport import RenderedMessage
 from .utils.paths import relativize_path
 
 STATUS = {"running": "▸", "update": "↻", "done": "✓", "fail": "✗"}
+FINAL_STATUS = {"done": "✅", "error": "❌", "cancelled": "⏹"}
+PROGRESS_EMOJI = {
+    "starting": "⏳",
+    "working": "⏳",
+    "queued": "⏳",
+    "cancelled": "⏹",
+}
 HEADER_SEP = " · "
 HARD_BREAK = "  \n"
+BLOCKQUOTE_PREFIX = "> "
+CTX_EMOJI = "📂"
 
 MAX_PROGRESS_CMD_LEN = 300
 MAX_FILE_CHANGES_INLINE = 3
+
+# Known abbreviations that should be uppercased in model display names.
+_MODEL_ABBREVIATIONS = frozenset({"gpt", "llm", "ai", "api", "vl"})
+
+# Patterns that start with a lowercase letter followed by digits (e.g. o1, o3, o4).
+# These should keep their original casing.
+_LOWERCASE_MODEL_RE = re.compile(r"^[a-z]\d")
+
+
+def format_context_display(context_line: str | None) -> str | None:
+    """Convert a raw context line to a display-friendly format for footers.
+
+    Examples::
+
+        "`ctx: notes @main`"  → "📂 notes @main"
+        "`ctx: takopi`"       → "📂 takopi"
+        None                  → None
+    """
+    if not context_line:
+        return None
+    # Strip backticks
+    text = context_line.strip("`").strip()
+    # Remove "ctx:" prefix
+    if text.lower().startswith("ctx:"):
+        text = text[4:].strip()
+    if not text:
+        return None
+    return f"{CTX_EMOJI} {text}"
+
+
+def extract_model_display_name(model_or_engine: str) -> str:
+    """Extract a human-friendly display name from a model identifier.
+
+    Examples::
+
+        "bailian/minimax-2.5"  → "Minimax 2.5"
+        "gpt-4.1-mini"         → "GPT 4.1 Mini"
+        "anthropic/claude-4-opus" → "Claude 4 Opus"
+        "o4-mini"              → "o4 Mini"
+    """
+    if not model_or_engine:
+        return ""
+    # Take the last segment of a slash-separated path
+    name = model_or_engine.rsplit("/", 1)[-1]
+    # Replace hyphens with spaces
+    name = name.replace("-", " ")
+    words = name.split()
+    result: list[str] = []
+    for word in words:
+        lower = word.lower()
+        if lower in _MODEL_ABBREVIATIONS:
+            result.append(word.upper())
+        elif _LOWERCASE_MODEL_RE.match(word):
+            # Keep original casing for patterns like "o4", "o3"
+            result.append(word)
+        else:
+            result.append(word.title())
+    return " ".join(result)
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +123,48 @@ def format_header(
     if item is not None:
         parts.append(f"step {item}")
     return HEADER_SEP.join(parts)
+
+
+def _format_progress_status(
+    state: ProgressState,
+    *,
+    elapsed_s: float,
+    label: str,
+) -> str:
+    """Build a blockquote status block for progress (in-flight) messages.
+
+    Format::
+
+        > ⏳ 3s · step 2 · Codex
+        > 📂 takopi @master
+    """
+    # Strip backtick wrapping from label (e.g. "`cancelled`" → "cancelled")
+    clean_label = label.strip("`").strip()
+    emoji = PROGRESS_EMOJI.get(clean_label, "⏳")
+
+    elapsed = format_elapsed(elapsed_s)
+    parts: list[str] = []
+    # For "queued" show the label instead of elapsed time
+    if clean_label == "queued":
+        parts.append(clean_label)
+    else:
+        parts.append(elapsed)
+    step = state.action_count or None
+    if step is not None:
+        parts.append(f"step {step}")
+    display_engine = extract_model_display_name(state.model or state.engine)
+    parts.append(display_engine)
+    status_line = f"{emoji} {HEADER_SEP.join(parts)}"
+
+    lines: list[str] = [status_line]
+    # Context and meta lines
+    ctx_parts: list[str] = []
+    ctx_display = format_context_display(state.context_line)
+    if ctx_display:
+        ctx_parts.append(ctx_display)
+    if ctx_parts:
+        lines.append(HEADER_SEP.join(ctx_parts))
+    return "\n".join(f"{BLOCKQUOTE_PREFIX}{line}" for line in lines)
 
 
 def shorten(text: str, width: int | None) -> str:
@@ -210,13 +320,6 @@ class MarkdownFormatter:
         elapsed_s: float,
         label: str = "working",
     ) -> MarkdownParts:
-        step = state.action_count or None
-        header = format_header(
-            elapsed_s,
-            step,
-            label=label,
-            engine=state.engine,
-        )
         body_lines: list[str] = []
         # Show intermediate text segments from agent reasoning
         for segment in state.text_segments:
@@ -227,9 +330,12 @@ class MarkdownFormatter:
         # Show action lines (tool calls)
         body_lines.extend(self._format_actions(state))
         body = self._assemble_body(body_lines)
-        return MarkdownParts(
-            header=header, body=body, footer=self._format_footer(state)
-        )
+        # Blockquote status footer
+        footer = _format_progress_status(state, elapsed_s=elapsed_s, label=label)
+        if body is None:
+            # No actions/text – status block is the only content
+            return MarkdownParts(header=footer)
+        return MarkdownParts(header="", body=body, footer=footer)
 
     def render_final_parts(
         self,
@@ -239,30 +345,49 @@ class MarkdownFormatter:
         status: str,
         answer: str,
     ) -> MarkdownParts:
-        step = state.action_count or None
-        header = format_header(
-            elapsed_s,
-            step,
-            label=status,
-            engine=state.engine,
-        )
         answer = (answer or "").strip()
         body = answer if answer else None
-        return MarkdownParts(
-            header=header, body=body, footer=self._format_footer(state)
-        )
+        footer = self._format_final_footer(state, elapsed_s=elapsed_s, status=status)
+        if body is None:
+            # No answer – footer is the only content
+            return MarkdownParts(header=footer)
+        return MarkdownParts(header="", body=body, footer=footer)
 
-    def _format_footer(self, state: ProgressState) -> str | None:
-        lines: list[str] = []
-        if state.context_line:
-            lines.append(state.context_line)
-        if state.resume_line:
-            lines.append(state.resume_line)
-        if state.model:
-            lines.append(f"`model: {state.model}`")
-        if not lines:
-            return None
-        return HARD_BREAK.join(lines)
+    def _format_final_footer(
+        self,
+        state: ProgressState,
+        *,
+        elapsed_s: float,
+        status: str,
+    ) -> str:
+        """Build compact footer for final messages, rendered as blockquote.
+
+        Format::
+
+            > ✅ 13s · step 12 · Claude 4.6 Opus
+            > 📂 takopi @master
+        """
+        emoji = FINAL_STATUS.get(status, FINAL_STATUS["done"])
+        elapsed = format_elapsed(elapsed_s)
+        parts: list[str] = [elapsed]
+        step = state.action_count or None
+        if step is not None:
+            parts.append(f"step {step}")
+        # Prefer model name over engine id for display;
+        # extract a human-friendly display name from the model path.
+        display_engine = extract_model_display_name(state.model or state.engine)
+        parts.append(display_engine)
+        status_line = f"{emoji} {HEADER_SEP.join(parts)}"
+
+        lines: list[str] = [status_line]
+        # Context line (project + branch) and resume hint
+        ctx_parts: list[str] = []
+        ctx_display = format_context_display(state.context_line)
+        if ctx_display:
+            ctx_parts.append(ctx_display)
+        if ctx_parts:
+            lines.append(HEADER_SEP.join(ctx_parts))
+        return "\n".join(f"{BLOCKQUOTE_PREFIX}{line}" for line in lines)
 
     def _format_actions(self, state: ProgressState) -> list[str]:
         actions = list(state.actions)

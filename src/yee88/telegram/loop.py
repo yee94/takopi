@@ -21,6 +21,7 @@ from ..commands import list_command_ids
 from ..directives import DirectiveError
 from ..logging import get_logger
 from ..model import ActionEvent, EngineId, ResumeToken
+from ..resume_cache import ResumeTokenCache
 from ..runners.run_options import EngineRunOptions
 from ..scheduler import ThreadJob, ThreadScheduler
 from ..progress import ProgressTracker
@@ -61,7 +62,6 @@ from .commands.handlers import (
     run_engine,
     save_file_put,
     set_command_menu,
-    should_show_resume_line,
 )
 from .commands.parse import is_cancel_command
 from .commands.reply import make_reply
@@ -990,6 +990,8 @@ async def run_main_loop(
         transport_id=transport_id,
     )
 
+    resume_cache = ResumeTokenCache()
+
     def refresh_topics_scope() -> None:
         if cfg.topics.enabled:
             (
@@ -1171,7 +1173,6 @@ async def run_main_loop(
                             thread_id=int(initial_ref.thread_id)
                             if initial_ref.thread_id
                             else None,
-                            force_hide_resume_line=True,
                             force_new_session=True,
                             run_options_model=job.model,
                             engine_override=engine_override,
@@ -1328,7 +1329,6 @@ async def run_main_loop(
                 | None = None,
                 engine_override: EngineId | None = None,
                 progress_ref: MessageRef | None = None,
-                force_hide_resume_line: bool = False,
                 force_new_session: bool = False,
                 run_options_model: str | None = None,
                 system_prompt: str | None = None,
@@ -1345,16 +1345,6 @@ async def run_main_loop(
                 if force_new_session:
                     topic_key = None
                     chat_session_key = None
-                stateful_mode = topic_key is not None or chat_session_key is not None
-                show_resume_line = (
-                    False
-                    if force_hide_resume_line
-                    else should_show_resume_line(
-                        show_resume_line=cfg.show_resume_line,
-                        stateful_mode=stateful_mode,
-                        context=context,
-                    )
-                )
                 engine_for_overrides = (
                     resume_token.engine
                     if resume_token is not None and not force_new_session
@@ -1399,7 +1389,7 @@ async def run_main_loop(
                                 reasoning=run_options.reasoning,
                                 system=run_options.system,
                             )
-                await run_engine(
+                handle_result = await run_engine(
                     exec_cfg=cfg.exec_cfg,
                     runtime=cfg.runtime,
                     running_tasks=state.running_tasks,
@@ -1414,11 +1404,20 @@ async def run_main_loop(
                     ),
                     engine_override=engine_override,
                     thread_id=thread_id,
-                    show_resume_line=show_resume_line,
                     progress_ref=progress_ref,
                     run_options=run_options,
                     on_question=_make_on_question(chat_id, thread_id),
                 )
+                # Store message_id → resume_token mapping for cache-based resume
+                if (
+                    handle_result.message_ref is not None
+                    and handle_result.resume_token is not None
+                ):
+                    resume_cache.set(
+                        chat_id,
+                        handle_result.message_ref.message_id,
+                        handle_result.resume_token,
+                    )
 
             async def run_thread_job(job: ThreadJob) -> None:
                 await run_job(
@@ -1461,6 +1460,8 @@ async def run_main_loop(
                         reply_text=msg.reply_to_text,
                         ambient_context=ambient_context,
                         chat_id=msg.chat_id,
+                        reply_to_message_id=msg.reply_to_message_id,
+                        resume_cache=resume_cache,
                     )
                 except DirectiveError as exc:
                     await reply(text=f"error:\n{exc}")
@@ -1616,6 +1617,8 @@ async def run_main_loop(
                         reply_text=msg.reply_to_text,
                         ambient_context=pending.ambient_context,
                         chat_id=chat_id,
+                        reply_to_message_id=msg.reply_to_message_id,
+                        resume_cache=resume_cache,
                     )
                 except DirectiveError as exc:
                     await reply(text=f"error:\n{exc}")
@@ -1762,7 +1765,12 @@ async def run_main_loop(
                 )
                 if saved is None:
                     return
-                annotation = f"[uploaded file: {saved.abs_path}]"
+                upload_path = (
+                    saved.abs_path.as_posix()
+                    if cfg.files.use_global_tmp
+                    else saved.rel_path.as_posix()
+                )
+                annotation = f"[uploaded file: {upload_path}]"
                 prompt = _build_upload_prompt(resolved.prompt, annotation)
                 await run_prompt_from_upload(msg, prompt, resolved)
 
@@ -1804,7 +1812,12 @@ async def run_main_loop(
                 )
                 if resolved is None:
                     return
-                annotation = f"[uploaded file: {abs_path}]"
+                upload_path = (
+                    abs_path.as_posix()
+                    if cfg.files.use_global_tmp
+                    else saved.rel_path.as_posix()
+                )
+                annotation = f"[uploaded file: {upload_path}]"
                 prompt = _build_upload_prompt(caption_text, annotation)
                 await run_prompt_from_upload(msg, prompt, resolved)
 

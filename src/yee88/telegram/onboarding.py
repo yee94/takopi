@@ -121,7 +121,6 @@ class OnboardingState:
     session_mode: SessionMode | None = None
     topics_enabled: bool = False
     topics_scope: TopicScope = "auto"
-    show_resume_line: bool | None = None
     default_engine: str | None = None
 
     @property
@@ -709,13 +708,10 @@ def build_transport_patch(state: OnboardingState, *, bot_token: str) -> dict[str
         raise RuntimeError("onboarding state missing chat")
     if state.session_mode is None:
         raise RuntimeError("onboarding state missing session mode")
-    if state.show_resume_line is None:
-        raise RuntimeError("onboarding state missing resume choice")
     return {
         "bot_token": bot_token,
         "chat_id": state.chat.chat_id,
         "session_mode": state.session_mode,
-        "show_resume_line": state.show_resume_line,
         "topics": {
             "enabled": state.topics_enabled,
             "scope": state.topics_scope,
@@ -754,7 +750,6 @@ def merge_config(
     telegram["bot_token"] = telegram_patch["bot_token"]
     telegram["chat_id"] = telegram_patch["chat_id"]
     telegram["session_mode"] = telegram_patch["session_mode"]
-    telegram["show_resume_line"] = telegram_patch["show_resume_line"]
     topics = ensure_table(
         telegram,
         "topics",
@@ -817,18 +812,15 @@ async def step_persona(ui: UI, _svc: Services, state: OnboardingState) -> None:
         state.session_mode = "chat"
         state.topics_enabled = True
         state.topics_scope = "auto"
-        state.show_resume_line = False
         return
     if state.persona == "assistant":
         state.session_mode = "chat"
         state.topics_enabled = False
         state.topics_scope = "auto"
-        state.show_resume_line = False
         return
     state.session_mode = "stateless"
     state.topics_enabled = False
     state.topics_scope = "auto"
-    state.show_resume_line = True
 
 
 async def step_capture_chat(ui: UI, svc: Services, state: OnboardingState) -> None:

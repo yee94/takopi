@@ -193,18 +193,12 @@ async def test_base_runner_run_impl_not_implemented() -> None:
 
 def test_resume_token_format_and_extract() -> None:
     runner = _DummyRunner()
-    token = ResumeToken(engine=runner.engine, value="abc")
-    assert runner.format_resume(token) == "`dummy resume abc`"
     assert runner.is_resume_line("`dummy resume abc`") is True
     text = "`dummy resume first`\n`dummy resume second`"
     assert runner.extract_resume(text) == ResumeToken(
         engine=runner.engine, value="second"
     )
     assert runner.extract_resume(None) is None
-
-    with pytest.raises(RuntimeError):
-        runner.format_resume(ResumeToken(engine="other", value="bad"))
-
 
 def test_session_lock_reuse() -> None:
     runner = _DummyRunner()

@@ -140,7 +140,6 @@ def test_interactive_setup_writes_config(monkeypatch, tmp_path) -> None:
     assert 'bot_token = "123456789:ABCdef"' in saved
     assert "chat_id = 123" in saved
     assert 'session_mode = "chat"' in saved
-    assert "show_resume_line = false" in saved
     assert "[transports.telegram.topics]" in saved
     assert "enabled = false" in saved
     assert 'default_engine = "codex"' in saved

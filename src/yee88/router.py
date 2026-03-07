@@ -5,6 +5,7 @@ from typing import Literal
 from collections.abc import Iterable
 
 from .model import EngineId, ResumeToken
+from .resume_cache import ResumeTokenCache
 from .runner import Runner
 
 
@@ -86,10 +87,6 @@ class AutoRouter:
             raise RunnerUnavailableError(entry.engine, entry.issue)
         return entry.runner
 
-    def format_resume(self, token: ResumeToken) -> str:
-        entry = self.entry_for(token)
-        return entry.runner.format_resume(token)
-
     def extract_resume(self, text: str | None) -> ResumeToken | None:
         if not text:
             return None
@@ -100,11 +97,28 @@ class AutoRouter:
         return None
 
     def resolve_resume(
-        self, text: str | None, reply_text: str | None
+        self,
+        text: str | None,
+        reply_text: str | None,
+        *,
+        chat_id: int | str | None = None,
+        reply_to_message_id: int | str | None = None,
+        resume_cache: ResumeTokenCache | None = None,
     ) -> ResumeToken | None:
+        # 1) Extract from user text (e.g. pasted session token)
         token = self.extract_resume(text)
         if token is not None:
             return token
+        # 2) Lookup by message_id in cache (reply to bot's final message)
+        if (
+            resume_cache is not None
+            and chat_id is not None
+            and reply_to_message_id is not None
+        ):
+            cached = resume_cache.get(chat_id, reply_to_message_id)
+            if cached is not None:
+                return cached
+        # 3) Fallback: extract from reply text (backward compat for old messages)
         if reply_text is None:
             return None
         return self.extract_resume(reply_text)

@@ -30,6 +30,7 @@ from .router import RunnerUnavailableError
 from .runner import BaseRunner, JsonlSubprocessRunner, Runner
 from .runner_bridge import (
     ExecBridgeConfig,
+    HandleResult,
     IncomingMessage,
     RunningTask,
     RunningTasks,

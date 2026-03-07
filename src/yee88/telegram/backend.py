@@ -38,7 +38,6 @@ def _build_startup_message(
     startup_pwd: str,
     chat_id: int,
     session_mode: Literal["stateless", "chat"],
-    show_resume_line: bool,
     topics: TelegramTopicsSettings,
     config_path: Path | None = None,
 ) -> str:
@@ -98,7 +97,6 @@ class TelegramBackend(TransportBackend):
             startup_pwd=os.getcwd(),
             chat_id=chat_id,
             session_mode=settings.session_mode,
-            show_resume_line=settings.show_resume_line,
             topics=settings.topics,
             config_path=config_path,
         )
@@ -117,7 +115,6 @@ class TelegramBackend(TransportBackend):
             startup_msg=startup_msg,
             exec_cfg=exec_cfg,
             session_mode=settings.session_mode,
-            show_resume_line=settings.show_resume_line,
             voice_transcription=settings.voice_transcription,
             voice_max_bytes=int(settings.voice_max_bytes),
             voice_transcription_model=settings.voice_transcription_model,

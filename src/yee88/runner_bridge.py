@@ -107,6 +107,14 @@ class RunningTask:
 RunningTasks = dict[MessageRef, RunningTask]
 
 
+@dataclass(frozen=True, slots=True)
+class HandleResult:
+    """Result of ``handle_message``: the final message ref and resume token."""
+
+    message_ref: MessageRef | None = None
+    resume_token: ResumeToken | None = None
+
+
 async def _send_or_edit_message(
     transport: Transport,
     *,
@@ -170,7 +178,6 @@ class ProgressEdits:
         started_at: float,
         clock: Callable[[], float],
         last_rendered: RenderedMessage | None,
-        resume_formatter: Callable[[ResumeToken], str] | None = None,
         label: str = "working",
         context_line: str | None = None,
         model: str | None = None,
@@ -183,7 +190,6 @@ class ProgressEdits:
         self.started_at = started_at
         self.clock = clock
         self.last_rendered = last_rendered
-        self.resume_formatter = resume_formatter
         self.label = label
         self.context_line = context_line
         self.model = model
@@ -204,7 +210,6 @@ class ProgressEdits:
             seq_at_render = self.event_seq
             now = self.clock()
             state = self.tracker.snapshot(
-                resume_formatter=self.resume_formatter,
                 context_line=self.context_line,
                 model=self.model,
             )
@@ -256,7 +261,6 @@ async def send_initial_progress(
     label: str,
     tracker: ProgressTracker,
     progress_ref: MessageRef | None = None,
-    resume_formatter: Callable[[ResumeToken], str] | None = None,
     context_line: str | None = None,
     thread_id: ThreadId | None = None,
     model: str | None = None,
@@ -264,7 +268,6 @@ async def send_initial_progress(
     last_rendered: RenderedMessage | None = None
 
     state = tracker.snapshot(
-        resume_formatter=resume_formatter,
         context_line=context_line,
         model=model,
     )
@@ -378,7 +381,7 @@ async def send_result_message(
     replace_ref: MessageRef | None = None,
     delete_tag: str = "final",
     thread_id: ThreadId | None = None,
-) -> None:
+) -> MessageRef | None:
     final_msg, edited = await _send_or_edit_message(
         cfg.transport,
         channel_id=channel_id,
@@ -390,7 +393,7 @@ async def send_result_message(
         thread_id=thread_id,
     )
     if final_msg is None:
-        return
+        return None
     if (
         progress_ref is not None
         and (edit_ref is None or not edited)
@@ -403,6 +406,7 @@ async def send_result_message(
             tag=delete_tag,
         )
         await cfg.transport.delete(ref=progress_ref)
+    return final_msg
 
 
 async def handle_message(
@@ -421,7 +425,7 @@ async def handle_message(
     clock: Callable[[], float] = time.monotonic,
     on_question: Callable[[ActionEvent, ResumeToken | None], Awaitable[None]]
     | None = None,
-) -> None:
+) -> HandleResult:
     logger.info(
         "handle.incoming",
         channel_id=incoming.channel_id,
@@ -447,7 +451,6 @@ async def handle_message(
         label="starting",
         tracker=progress_tracker,
         progress_ref=progress_ref,
-        resume_formatter=runner.format_resume,
         context_line=context_line,
         thread_id=incoming.thread_id,
         model=_effective_model(runner),
@@ -463,7 +466,6 @@ async def handle_message(
         started_at=started_at,
         clock=clock,
         last_rendered=progress_state.last_rendered,
-        resume_formatter=runner.format_resume,
         context_line=context_line,
         model=_effective_model(runner),
     )
@@ -521,10 +523,10 @@ async def handle_message(
     elapsed = clock() - started_at
 
     if error is not None:
-        sync_resume_token(progress_tracker, outcome.resume)
+        error_resume = outcome.resume or progress_tracker.resume
+        sync_resume_token(progress_tracker, error_resume)
         err_body = _format_error(error)
         state = progress_tracker.snapshot(
-            resume_formatter=runner.format_resume,
             context_line=context_line,
             model=_effective_model(runner),
         )
@@ -539,7 +541,7 @@ async def handle_message(
             error=err_body,
             rendered=final_rendered.text,
         )
-        await send_result_message(
+        ref = await send_result_message(
             cfg,
             channel_id=incoming.channel_id,
             reply_to=user_ref,
@@ -551,7 +553,7 @@ async def handle_message(
             delete_tag="error",
             thread_id=incoming.thread_id,
         )
-        return
+        return HandleResult(message_ref=ref, resume_token=error_resume)
 
     if outcome.cancelled:
         resume = sync_resume_token(progress_tracker, outcome.resume)
@@ -561,7 +563,6 @@ async def handle_message(
             elapsed_s=elapsed,
         )
         state = progress_tracker.snapshot(
-            resume_formatter=runner.format_resume,
             context_line=context_line,
             model=_effective_model(runner),
         )
@@ -570,7 +571,7 @@ async def handle_message(
             elapsed_s=elapsed,
             label="`cancelled`",
         )
-        await send_result_message(
+        ref = await send_result_message(
             cfg,
             channel_id=incoming.channel_id,
             reply_to=user_ref,
@@ -582,7 +583,7 @@ async def handle_message(
             delete_tag="cancel",
             thread_id=incoming.thread_id,
         )
-        return
+        return HandleResult(message_ref=ref, resume_token=outcome.resume)
 
     if outcome.completed is None:
         raise RuntimeError("runner finished without a completed event")
@@ -616,7 +617,6 @@ async def handle_message(
     )
     sync_resume_token(progress_tracker, completed.resume or outcome.resume)
     state = progress_tracker.snapshot(
-        resume_formatter=runner.format_resume,
         context_line=context_line,
         model=_effective_model(runner),
     )
@@ -635,7 +635,7 @@ async def handle_message(
     can_edit_final = progress_ref is not None
     edit_ref = None if cfg.final_notify or not can_edit_final else progress_ref
 
-    await send_result_message(
+    ref = await send_result_message(
         cfg,
         channel_id=incoming.channel_id,
         reply_to=user_ref,
@@ -647,3 +647,5 @@ async def handle_message(
         delete_tag="final",
         thread_id=incoming.thread_id,
     )
+    final_resume = completed.resume or outcome.resume
+    return HandleResult(message_ref=ref, resume_token=final_resume)

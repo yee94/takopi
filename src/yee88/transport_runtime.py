@@ -15,6 +15,7 @@ from .directives import (
 )
 from .model import EngineId, ResumeToken
 from .plugins import normalize_allowlist
+from .resume_cache import ResumeTokenCache
 from .router import AutoRouter, EngineStatus
 from .runner import Runner
 from .worktrees import WorktreeError, resolve_run_cwd
@@ -213,6 +214,8 @@ class TransportRuntime:
         reply_text: str | None,
         ambient_context: RunContext | None = None,
         chat_id: int | None = None,
+        reply_to_message_id: int | str | None = None,
+        resume_cache: ResumeTokenCache | None = None,
     ) -> ResolvedMessage:
         directives = parse_directives(
             text,
@@ -220,7 +223,13 @@ class TransportRuntime:
             projects=self._projects,
         )
         reply_ctx = parse_context_line(reply_text, projects=self._projects)
-        resume_token = self._router.resolve_resume(directives.prompt, reply_text)
+        resume_token = self._router.resolve_resume(
+            directives.prompt,
+            reply_text,
+            chat_id=chat_id,
+            reply_to_message_id=reply_to_message_id,
+            resume_cache=resume_cache,
+        )
         chat_project = self._projects.project_for_chat(chat_id)
         default_project = chat_project or self._projects.default_project
 
