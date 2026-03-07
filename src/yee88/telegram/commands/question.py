@@ -164,11 +164,11 @@ async def handle_question_callback(
     query: TelegramCallbackQuery,
     questions_pending: dict[str, ActionEvent],
     resume_tokens: dict[str, ResumeToken | None],
-) -> str | None:
+) -> tuple[str, ResumeToken | None] | None:
     """Handle a question callback query.
 
-    Returns the formatted answer string if the callback was valid,
-    or None if it was not a question callback.
+    Returns ``(answer, resume_token)`` if the callback was valid,
+    or ``None`` if it was not a question callback.
     """
     if not query.data:
         return None
@@ -194,9 +194,9 @@ async def handle_question_callback(
         text=f"Selected: {answer}",
     )
 
-    # Clean up
+    # Clean up – pop resume token but preserve it for the caller
     questions_pending.pop(action_id, None)
-    resume_tokens.pop(action_id, None)
+    resume_token = resume_tokens.pop(action_id, None)
 
     logger.info(
         "question.answered",
@@ -204,4 +204,4 @@ async def handle_question_callback(
         answer=answer,
     )
 
-    return answer
+    return answer, resume_token

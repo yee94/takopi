@@ -110,6 +110,12 @@ def _chat_session_key(
     return (msg.chat_id, msg.sender_id)
 
 
+# Built-in directives that are always appended to the system prompt and
+# cannot be overridden by user configuration.  Keep this minimal – only
+# include rules that are essential for correct runtime behaviour.
+_BUILTIN_DIRECTIVES = "禁止使用 question tool，如果需要向用户提问或确认，直接在消息中列出选项让用户回复即可。"
+
+
 async def _resolve_engine_run_options(
     chat_id: int,
     thread_id: int | None,
@@ -131,9 +137,10 @@ async def _resolve_engine_run_options(
     if chat_prefs is not None and thread_id is None:
         chat_override = await chat_prefs.get_engine_override(chat_id, engine)
     merged = merge_overrides(topic_override, chat_override)
-    # Three-layer prompt concatenation: global → project → topic
+    # Three-layer prompt concatenation: global → project → topic → builtin
     prompt_parts = [p for p in (system_prompt, topic_system_prompt) if p]
-    final_prompt = "\n".join(prompt_parts) if prompt_parts else None
+    prompt_parts.append(_BUILTIN_DIRECTIVES)
+    final_prompt = "\n".join(prompt_parts)
     if merged is None and final_prompt is None:
         return None
     return EngineRunOptions(
@@ -1239,19 +1246,18 @@ async def run_main_loop(
             async def _handle_question_answer(
                 query: TelegramCallbackQuery,
             ) -> None:
-                answer = await handle_question_callback(
+                result = await handle_question_callback(
                     cfg,
                     query,
                     _questions_pending,
                     _question_resume_tokens,
                 )
-                if answer is None:
+                if result is None:
                     return
-                # Find the chat/thread for this question and send the answer
-                # as a new message via resume session.
-                chat_info = _question_chat_info.pop(
-                    query.data.split(":")[2] if query.data else "", None
-                )
+                answer, resume_token = result
+                # Find the chat/thread for this question and resume the session.
+                action_id = query.data.split(":")[2] if query.data else ""
+                chat_info = _question_chat_info.pop(action_id, None)
                 if chat_info is None:
                     return
                 q_chat_id, q_thread_id = chat_info
@@ -1264,8 +1270,7 @@ async def run_main_loop(
                         with anyio.move_on_after(2.0):
                             await task.done.wait()
                         break
-                # Send the answer as a reply message to resume the session
-                answer_text = f"My answer to your question: {answer}"
+                # Show the selected answer in chat
                 await send_plain(
                     cfg.exec_cfg.transport,
                     chat_id=q_chat_id,
@@ -1273,6 +1278,17 @@ async def run_main_loop(
                     thread_id=q_thread_id,
                     text=f"✅ {answer}",
                 )
+                # Resume the session with the answer so the AI can continue
+                if resume_token is not None:
+                    answer_text = f"My answer to your question: {answer}"
+                    await run_job(
+                        q_chat_id,
+                        query.message_id,
+                        answer_text,
+                        resume_token,
+                        None,
+                        q_thread_id,
+                    )
 
             def wrap_on_thread_known(
                 base_cb: Callable[[ResumeToken, anyio.Event], Awaitable[None]] | None,
@@ -1780,15 +1796,16 @@ async def run_main_loop(
                             f"({format_bytes(saved.size)})"
                         ),
                     )
+                caption_text = msg.text.strip() if msg.text else ""
                 resolved = await resolve_prompt_message(
                     msg,
-                    msg.text.strip() or "",
+                    caption_text,
                     ambient_context,
                 )
                 if resolved is None:
                     return
                 annotation = f"[uploaded file: {abs_path}]"
-                prompt = _build_upload_prompt("", annotation)
+                prompt = _build_upload_prompt(caption_text, annotation)
                 await run_prompt_from_upload(msg, prompt, resolved)
 
             media_group_buffer = MediaGroupBuffer(
@@ -1984,16 +2001,12 @@ async def run_main_loop(
                                 ambient_context,
                                 state.topic_store,
                             )
-                        elif not caption_text:
+                        else:
                             tg.start_soon(
                                 handle_upload_and_forward,
                                 msg,
                                 ambient_context,
                                 state.topic_store,
-                            )
-                        else:
-                            tg.start_soon(
-                                partial(reply, text=FILE_PUT_USAGE),
                             )
                     elif cfg.files.enabled:
                         tg.start_soon(

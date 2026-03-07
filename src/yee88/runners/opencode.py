@@ -355,6 +355,10 @@ class OpenCodeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
         # Apply system prompt as prefix only on first run (when resume is None)
         if resume is None and run_options is not None and run_options.system:
             prompt = f"{run_options.system}\n\n---\n\n{prompt}"
+        # Workaround: opencode CLI treats pure numeric prompts as numbers instead of
+        # strings, causing "arg.includes is not a function" errors. Prefix with space.
+        if prompt.isdigit():
+            prompt = f" {prompt}"
         args.extend(["--", prompt])
         return args
 

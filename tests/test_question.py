@@ -22,6 +22,7 @@ from yee88.telegram.commands.question import (
     format_question_message,
     parse_question_callback_data,
 )
+from yee88.telegram.types import TelegramCallbackQuery
 from yee88.utils.paths import reset_run_base_dir, set_run_base_dir
 
 
@@ -351,3 +352,250 @@ class TestFormatQuestionAnswer:
 
     def test_empty_questions(self) -> None:
         assert format_question_answer([], 0) == ""
+
+
+# ---------------------------------------------------------------------------
+# question.py: handle_question_callback
+# ---------------------------------------------------------------------------
+
+
+class _FakeBot:
+    """Minimal BotClient stub for handle_question_callback tests."""
+
+    def __init__(self) -> None:
+        self.answered: list[dict] = []
+
+    async def answer_callback_query(
+        self,
+        callback_query_id: str,
+        text: str | None = None,
+        show_alert: bool | None = None,
+    ) -> bool:
+        self.answered.append(
+            {"id": callback_query_id, "text": text, "show_alert": show_alert}
+        )
+        return True
+
+
+class _FakeCfg:
+    """Minimal TelegramBridgeConfig stub."""
+
+    def __init__(self, bot: _FakeBot) -> None:
+        self.bot = bot
+
+
+def _make_question_action_event(action_id: str = "call_q1") -> ActionEvent:
+    return ActionEvent(
+        engine="opencode",
+        action=Action(
+            id=action_id,
+            kind="question",
+            title="Framework",
+            detail={
+                "name": "question",
+                "input": {},
+                "callID": action_id,
+                "questions": [
+                    {
+                        "question": "Which framework?",
+                        "header": "Framework",
+                        "options": [
+                            {"label": "React", "description": "UI lib"},
+                            {"label": "Vue", "description": "Progressive"},
+                        ],
+                        "multiple": False,
+                        "custom": True,
+                    }
+                ],
+            },
+        ),
+        phase="started",
+    )
+
+
+class TestHandleQuestionCallback:
+    @pytest.mark.anyio
+    async def test_returns_answer_and_resume_token(self) -> None:
+        from yee88.telegram.commands.question import handle_question_callback
+
+        bot = _FakeBot()
+        cfg = _FakeCfg(bot)
+        action_id = "call_q1"
+        resume = ResumeToken(engine="opencode", value="ses_q1")
+        pending = {action_id: _make_question_action_event(action_id)}
+        tokens = {action_id: resume}
+
+        query = TelegramCallbackQuery(
+            transport="telegram",
+            chat_id=123,
+            message_id=10,
+            callback_query_id="cb_1",
+            data=build_question_callback_data(action_id, 0),
+            sender_id=321,
+        )
+
+        result = await handle_question_callback(cfg, query, pending, tokens)  # type: ignore[arg-type]
+
+        assert result is not None
+        answer, returned_token = result
+        assert answer == "React"
+        assert returned_token is resume
+        # Pending state should be cleaned up
+        assert action_id not in pending
+        assert action_id not in tokens
+
+    @pytest.mark.anyio
+    async def test_returns_answer_with_none_resume_token(self) -> None:
+        from yee88.telegram.commands.question import handle_question_callback
+
+        bot = _FakeBot()
+        cfg = _FakeCfg(bot)
+        action_id = "call_q2"
+        pending = {action_id: _make_question_action_event(action_id)}
+        tokens: dict[str, ResumeToken | None] = {action_id: None}
+
+        query = TelegramCallbackQuery(
+            transport="telegram",
+            chat_id=123,
+            message_id=10,
+            callback_query_id="cb_2",
+            data=build_question_callback_data(action_id, 1),
+            sender_id=321,
+        )
+
+        result = await handle_question_callback(cfg, query, pending, tokens)  # type: ignore[arg-type]
+
+        assert result is not None
+        answer, returned_token = result
+        assert answer == "Vue"
+        assert returned_token is None
+
+    @pytest.mark.anyio
+    async def test_returns_none_for_expired_question(self) -> None:
+        from yee88.telegram.commands.question import handle_question_callback
+
+        bot = _FakeBot()
+        cfg = _FakeCfg(bot)
+
+        query = TelegramCallbackQuery(
+            transport="telegram",
+            chat_id=123,
+            message_id=10,
+            callback_query_id="cb_3",
+            data=build_question_callback_data("nonexistent", 0),
+            sender_id=321,
+        )
+
+        result = await handle_question_callback(cfg, query, {}, {})  # type: ignore[arg-type]
+
+        assert result is None
+        # Should have answered with "expired" message
+        assert len(bot.answered) == 1
+        assert "expired" in bot.answered[0]["text"].lower()
+
+    @pytest.mark.anyio
+    async def test_returns_none_for_non_question_callback(self) -> None:
+        from yee88.telegram.commands.question import handle_question_callback
+
+        bot = _FakeBot()
+        cfg = _FakeCfg(bot)
+
+        query = TelegramCallbackQuery(
+            transport="telegram",
+            chat_id=123,
+            message_id=10,
+            callback_query_id="cb_4",
+            data="yee88:cancel",
+            sender_id=321,
+        )
+
+        result = await handle_question_callback(cfg, query, {}, {})  # type: ignore[arg-type]
+        assert result is None
+
+    @pytest.mark.anyio
+    async def test_returns_none_for_empty_data(self) -> None:
+        from yee88.telegram.commands.question import handle_question_callback
+
+        bot = _FakeBot()
+        cfg = _FakeCfg(bot)
+
+        query = TelegramCallbackQuery(
+            transport="telegram",
+            chat_id=123,
+            message_id=10,
+            callback_query_id="cb_5",
+            data=None,
+            sender_id=321,
+        )
+
+        result = await handle_question_callback(cfg, query, {}, {})  # type: ignore[arg-type]
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Builtin directives: question tool prohibition is always injected
+# ---------------------------------------------------------------------------
+
+
+class TestBuiltinDirectives:
+    @pytest.mark.anyio
+    async def test_builtin_directives_always_present(self) -> None:
+        from yee88.telegram.loop import _resolve_engine_run_options, _BUILTIN_DIRECTIVES
+
+        result = await _resolve_engine_run_options(
+            chat_id=123,
+            thread_id=None,
+            engine="opencode",
+            chat_prefs=None,
+            topic_store=None,
+            system_prompt=None,
+        )
+
+        assert result is not None
+        assert result.system is not None
+        assert _BUILTIN_DIRECTIVES in result.system
+
+    @pytest.mark.anyio
+    async def test_builtin_directives_appended_to_user_prompt(self) -> None:
+        from yee88.telegram.loop import _resolve_engine_run_options, _BUILTIN_DIRECTIVES
+
+        user_prompt = "你是一个翻译助手"
+        result = await _resolve_engine_run_options(
+            chat_id=123,
+            thread_id=None,
+            engine="opencode",
+            chat_prefs=None,
+            topic_store=None,
+            system_prompt=user_prompt,
+        )
+
+        assert result is not None
+        assert result.system is not None
+        # User prompt comes first
+        assert result.system.startswith(user_prompt)
+        # Builtin directives appended at the end
+        assert result.system.endswith(_BUILTIN_DIRECTIVES)
+        assert "question tool" in result.system
+
+    @pytest.mark.anyio
+    async def test_builtin_directives_not_overridden_by_user(self) -> None:
+        from yee88.telegram.loop import _resolve_engine_run_options, _BUILTIN_DIRECTIVES
+
+        # Even if user says "use question tool", builtin still appended
+        user_prompt = "Always use the question tool to ask users"
+        result = await _resolve_engine_run_options(
+            chat_id=123,
+            thread_id=None,
+            engine="opencode",
+            chat_prefs=None,
+            topic_store=None,
+            system_prompt=user_prompt,
+        )
+
+        assert result is not None
+        assert result.system is not None
+        assert _BUILTIN_DIRECTIVES in result.system
+        # Builtin comes after user prompt (last word wins for LLMs)
+        idx_user = result.system.index(user_prompt)
+        idx_builtin = result.system.index(_BUILTIN_DIRECTIVES)
+        assert idx_builtin > idx_user
