@@ -1,5 +1,69 @@
 # changelog
 
+## v0.10.3 (2026-03-08)
+
+### features
+
+- **多模态图文支持**：AI 回复中的 Markdown 图片自动通过 sendPhoto 发送为真实图片；用户发送带 caption 的图片/文件自动上传并传递给 AI
+- **question tool 支持**：AI 引擎的 question action 自动转化为 Telegram inline keyboard，支持按钮回答和自由输入
+- **智能问候语**：启动时根据时间段、工作日/周末、长时间未使用等条件发送差异化问候
+- **状态栏 footer 重构**：使用精简 emoji 展示运行状态（⏳/✅/❌/⏹），模型名称智能美化，上下文路径用 📂 展示
+- **session resume cache**：新增 resume_cache 模块缓存 session token，加速会话恢复
+
+### fixes
+
+- 修复带 caption 的文件/照片上传返回 usage 错误
+- 修复纯数字 prompt 导致 opencode CLI 崩溃
+- 修复 question callback 返回 resume token 恢复 session
+- 新增 _BUILTIN_DIRECTIVES 机制，在 system prompt 末尾注入不可覆盖的内置指令
+- 简化 telegram resume handling 逻辑
+
+## v0.9.10 (2026-03-07)
+
+### features
+
+- **项目级独立配置**：新增 default_model（项目独立模型）、session_mode（stateless/chat 模式）
+- 修复 topic 模型隔离：chat 级别引擎覆盖不再泄漏到 topic
+
+## v0.9.5 (2026-03-04)
+
+### features
+
+- **send-file 命令**：新增 `yee88 send-file` CLI 命令，AI 引擎可主动向 Telegram 发送文件/图片
+- **运行时环境注入**：自动注入 YEE88_CHAT_ID 和 YEE88_THREAD_ID 到引擎子进程
+
+### fixes
+
+- handoff: topic 被删除时自动重试新 topic
+- handoff: 创建 topic 前校验项目有效性
+- handoff: 适配 OpenCode SQLite 存储格式
+
+## v0.9.0 (2026-02-15)
+
+### features
+
+- **cron 独立 session**：定时任务支持独立会话隔离和可配置的 engine/model
+- **cron engine/model 字段**：CronJob 模型新增 engine 和 model 配置
+
+### fixes
+
+- cron: 全量修复 Cron 系统关键问题
+- cron: 漏执行检测改为检查过去 24 小时而非仅当天
+
+## v0.8.0 (2026-02-08)
+
+### features
+
+- **cron 增强**：支持独立 session 和可配置引擎/模型的定时任务
+- handoff 命令输出信息优化
+
+## v0.7.1 (2026-02-01)
+
+### features
+
+- **`/fork` 命令**：将当前 topic 的上下文和 session 状态分叉到新 topic，支持自动编号（fork #1, fork #2, ...）
+- README 全面改写为中文，新增 `npx skills add yee94/yee88` 一键安装引导
+
 ## v0.7.0 (2026-02-01)
 
 ### features
