@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Callable, Awaitable, Set, Dict
 from anyio.abc import TaskGroup
 import anyio
-from anyio import Lock, move_on_after
+from anyio import Lock
 from .manager import CronManager
 from .models import CronJob
 from ..logging import get_logger
@@ -145,12 +145,8 @@ class CronScheduler:
 
         try:
             logger.info("cron.job.executing", job_id=job.id)
-            with move_on_after(180):
-                await self.callback(job)
-                logger.info("cron.job.completed", job_id=job.id)
-                return
-
-            logger.warning("cron.job.timeout", job_id=job.id, timeout_s=180)
+            await self.callback(job)
+            logger.info("cron.job.completed", job_id=job.id)
         except Exception as exc:
             logger.error("cron.job.failed", job_id=job.id, error=str(exc))
         finally:

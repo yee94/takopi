@@ -154,7 +154,7 @@ class HttpBotClient:
         self,
         token: str,
         *,
-        timeout_s: float = 120,
+        timeout_s: float | None = 120,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not token:

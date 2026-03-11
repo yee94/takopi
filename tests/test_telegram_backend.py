@@ -129,8 +129,9 @@ def test_telegram_backend_build_and_run_wires_config(
         captured["kwargs"] = kwargs
 
     class _FakeClient:
-        def __init__(self, token: str) -> None:
+        def __init__(self, token: str, timeout_s: float | None = 120) -> None:
             self.token = token
+            self.timeout_s = timeout_s
 
         async def close(self) -> None:
             return None
@@ -172,6 +173,7 @@ def test_telegram_backend_build_and_run_wires_config(
     assert cfg.files.allowed_user_ids == [1, 2]
     assert cfg.topics.enabled is True
     assert cfg.bot.token == "token"
+    assert cfg.bot.timeout_s is None
     assert kwargs["watch_config"] is True
     assert kwargs["transport_id"] == "telegram"
 

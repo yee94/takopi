@@ -42,7 +42,7 @@ class TelegramClient:
         token: str | None = None,
         *,
         client: BotClient | None = None,
-        timeout_s: float = 120,
+        timeout_s: float | None = 120,
         http_client: httpx.AsyncClient | None = None,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = anyio.sleep,
