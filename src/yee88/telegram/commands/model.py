@@ -33,6 +33,41 @@ MODEL_USAGE = (
 )
 
 
+def _apply_model_filter(models: list[str], model_filter: str) -> list[str]:
+    """Apply model filter as a regex with optional ``!`` prefix for negation.
+
+    If *model_filter* starts with ``!``, the remainder is compiled as a regex
+    and models **matching** it are **removed**.  Otherwise the whole string is
+    compiled as a regex and only models **matching** it are **kept**.
+
+    Because the pattern is a standard regex, ``|`` retains its normal "or"
+    meaning inside the expression.
+
+    Examples::
+
+        "claude"                – keep only models containing "claude"
+        "claude|sonnet"         – keep models containing "claude" or "sonnet"
+        "!preview"              – remove models containing "preview"
+        "!preview|experimental" – remove models containing "preview" or "experimental"
+    """
+    if not model_filter:
+        return models
+
+    negate = model_filter.startswith("!")
+    raw = model_filter[1:] if negate else model_filter
+    if not raw:
+        return models
+
+    try:
+        pat = re.compile(raw, re.IGNORECASE)
+    except re.error:
+        return models
+
+    if negate:
+        return [m for m in models if not pat.search(m)]
+    return [m for m in models if pat.search(m)]
+
+
 async def _get_opencode_models() -> list[str]:
     """Fetch available models from opencode CLI."""
     try:
@@ -106,7 +141,7 @@ async def handle_model_select_callback(
     if not query.data.startswith(prefix):
         return
 
-    data = query.data[len(prefix):]
+    data = query.data[len(prefix) :]
     if ":" not in data:
         return
 
@@ -164,11 +199,7 @@ async def _handle_model_command(
             opencode_cfg = cfg.runtime.engine_config("opencode")
             model_filter = opencode_cfg.get("model_filter")
             if model_filter and isinstance(model_filter, str):
-                try:
-                    pattern = re.compile(model_filter, re.IGNORECASE)
-                    models = [m for m in models if pattern.search(m)]
-                except re.error:
-                    pass
+                models = _apply_model_filter(models, model_filter)
             if models:
                 await _send_model_selector(cfg, msg, engine, models)
                 return
@@ -351,7 +382,7 @@ async def _handle_model_command(
             denied="changing model overrides is restricted to group admins.",
         ):
             return
-        
+
         cleared_engines = []
         for engine in engine_ids:
             scope = await apply_engine_override(
@@ -370,7 +401,7 @@ async def _handle_model_command(
             )
             if scope is not None:
                 cleared_engines.append(engine)
-        
+
         if cleared_engines:
             engines_list = ", ".join(cleared_engines)
             await reply(
