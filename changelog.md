@@ -1,5 +1,12 @@
 # changelog
 
+## v0.10.6 (2026-03-12)
+
+### fixes
+
+- handoff: 创建新 Telegram topic 时复用同一个 client 立即发送首条接力消息，避免消息落进 General 话题
+- handoff: 校验首条消息的 `message_thread_id`，若未真正进入新话题则自动重建并重试一次
+
 ## v0.10.5 (2026-03-12)
 
 ### fixes
