@@ -319,7 +319,8 @@ async def _create_handoff_topic(
     session_id: str,
     project: str | None,
     config_path: Path,
-) -> int | None:
+    message: str,
+) -> tuple[int, bool] | None:
     title = f"📱 {project} handoff" if project else "📱 handoff"
 
     client = TelegramClient(token)
@@ -347,9 +348,44 @@ async def _create_handoff_topic(
         resume_token = ResumeToken(engine="opencode", value=session_id)
         await store.set_session_resume(chat_id, thread_id, resume_token)
 
-        return thread_id
+        sent = await _send_message_with_client(
+            client,
+            chat_id=chat_id,
+            message=message,
+            thread_id=thread_id,
+        )
+        return thread_id, sent
     finally:
         await client.close()
+
+
+async def _send_message_with_client(
+    client: TelegramClient,
+    chat_id: int,
+    message: str,
+    thread_id: int | None = None,
+) -> bool:
+    result = await client.send_message(
+        chat_id=chat_id,
+        text=message,
+        message_thread_id=thread_id,
+        parse_mode="Markdown",
+    )
+    if result is None:
+        result = await client.send_message(
+            chat_id=chat_id,
+            text=message,
+            message_thread_id=thread_id,
+        )
+    if result is None:
+        return False
+    if (
+        thread_id is not None
+        and result.message_thread_id is not None
+        and result.message_thread_id != thread_id
+    ):
+        return False
+    return True
 
 
 async def _send_to_telegram(
@@ -360,22 +396,12 @@ async def _send_to_telegram(
 ) -> bool:
     client = TelegramClient(token)
     try:
-        # 先尝试 Markdown 格式发送
-        result = await client.send_message(
+        return await _send_message_with_client(
+            client,
             chat_id=chat_id,
-            text=message,
-            message_thread_id=thread_id,
-            parse_mode="Markdown",
+            message=message,
+            thread_id=thread_id,
         )
-        if result is not None:
-            return True
-        # Markdown 解析失败时降级为纯文本
-        result = await client.send_message(
-            chat_id=chat_id,
-            text=message,
-            message_thread_id=thread_id,
-        )
-        return result is not None
     finally:
         await client.close()
 
@@ -475,6 +501,11 @@ def send(
 
     async def do_handoff() -> tuple[bool, int | None, bool]:
         project_name = session_project
+        handoff_msg = _format_handoff_message(
+            session_id=session_id,
+            messages=messages,
+            project=session_project,
+        )
         context = (
             RunContext(project=project_name.lower(), branch=None)
             if project_name
@@ -492,6 +523,7 @@ def send(
 
         thread_id: int | None = None
         reused = False
+        created_and_sent = False
 
         if existing_thread_id is not None:
             # 尝试复用已有 topic，先验证它在 Telegram 端是否还存在
@@ -502,13 +534,16 @@ def send(
 
         if thread_id is None:
             # 创建新 topic
-            thread_id = await _create_handoff_topic(
+            created = await _create_handoff_topic(
                 token=token,
                 chat_id=chat_id,
                 session_id=session_id,
                 project=project_name,
                 config_path=config_path,
+                message=handoff_msg,
             )
+            if created is not None:
+                thread_id, created_and_sent = created
             reused = False
 
         if thread_id is None:
@@ -523,31 +558,30 @@ def send(
             override = EngineOverrides(model=model_id)
             await store.set_engine_override(chat_id, thread_id, "opencode", override)
 
-        handoff_msg = _format_handoff_message(
-            session_id=session_id,
-            messages=messages,
-            project=session_project,
-        )
+        success = created_and_sent
+        if not created_and_sent:
+            success = await _send_to_telegram(
+                token=token,
+                chat_id=chat_id,
+                message=handoff_msg,
+                thread_id=thread_id,
+            )
 
-        success = await _send_to_telegram(
-            token=token,
-            chat_id=chat_id,
-            message=handoff_msg,
-            thread_id=thread_id,
-        )
-
-        # 如果复用的 topic 发送失败（可能已被删除），清理 state 并创建新 topic 重试
-        if not success and reused:
+        # 如果发送失败，清理当前绑定并创建新 topic 重试一次。
+        # 复用老 topic 时通常是 topic 已被删除；新建 topic 时则可能是首条消息没有真正进入新 thread。
+        if not success:
             await store.delete_thread(chat_id, thread_id)
-            thread_id = await _create_handoff_topic(
+            created = await _create_handoff_topic(
                 token=token,
                 chat_id=chat_id,
                 session_id=session_id,
                 project=project_name,
                 config_path=config_path,
+                message=handoff_msg,
             )
-            if thread_id is None:
+            if created is None:
                 return False, None, False
+            thread_id, success = created
             reused = False
             await store.set_default_engine(chat_id, thread_id, "opencode")
             if model_id:
@@ -555,12 +589,6 @@ def send(
                 await store.set_engine_override(
                     chat_id, thread_id, "opencode", override
                 )
-            success = await _send_to_telegram(
-                token=token,
-                chat_id=chat_id,
-                message=handoff_msg,
-                thread_id=thread_id,
-            )
 
         return success, thread_id, reused
 
