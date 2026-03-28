@@ -34,38 +34,59 @@ MODEL_USAGE = (
 
 
 def _apply_model_filter(models: list[str], model_filter: str) -> list[str]:
-    """Apply model filter as a regex with optional ``!`` prefix for negation.
+    """Apply pipe-delimited include/exclude regex rules.
 
-    If *model_filter* starts with ``!``, the remainder is compiled as a regex
-    and models **matching** it are **removed**.  Otherwise the whole string is
-    compiled as a regex and only models **matching** it are **kept**.
+    Each ``|``-delimited token is treated as a case-insensitive regex rule.
+    Tokens prefixed with ``!`` are exclusions; all others are inclusions.
 
-    Because the pattern is a standard regex, ``|`` retains its normal "or"
-    meaning inside the expression.
+    Matching behavior:
+    - if at least one inclusion exists, a model must match one inclusion
+    - excluded models are always removed, even if they matched an inclusion
+    - invalid regex tokens are ignored
 
     Examples::
 
-        "claude"                – keep only models containing "claude"
-        "claude|sonnet"         – keep models containing "claude" or "sonnet"
-        "!preview"              – remove models containing "preview"
-        "!preview|experimental" – remove models containing "preview" or "experimental"
+        "claude|sonnet"                  – keep models matching either rule
+        "!preview|!experimental"        – remove preview/experimental models
+        "gpt-5.4|claude|!poe|!debug"    – keep gpt/claude, but always hide poe/debug
     """
     if not model_filter:
         return models
 
-    negate = model_filter.startswith("!")
-    raw = model_filter[1:] if negate else model_filter
-    if not raw:
+    include_patterns: list[re.Pattern[str]] = []
+    exclude_patterns: list[re.Pattern[str]] = []
+
+    for part in model_filter.split("|"):
+        token = part.strip()
+        if not token:
+            continue
+
+        is_exclude = token.startswith("!")
+        raw = token[1:].strip() if is_exclude else token
+        if not raw:
+            continue
+
+        try:
+            pattern = re.compile(raw, re.IGNORECASE)
+        except re.error:
+            continue
+
+        if is_exclude:
+            exclude_patterns.append(pattern)
+        else:
+            include_patterns.append(pattern)
+
+    if not include_patterns and not exclude_patterns:
         return models
 
-    try:
-        pat = re.compile(raw, re.IGNORECASE)
-    except re.error:
-        return models
-
-    if negate:
-        return [m for m in models if not pat.search(m)]
-    return [m for m in models if pat.search(m)]
+    filtered: list[str] = []
+    for model in models:
+        if include_patterns and not any(p.search(model) for p in include_patterns):
+            continue
+        if any(p.search(model) for p in exclude_patterns):
+            continue
+        filtered.append(model)
+    return filtered
 
 
 async def _get_opencode_models() -> list[str]:
