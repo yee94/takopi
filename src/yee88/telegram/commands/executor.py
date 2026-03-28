@@ -33,6 +33,7 @@ from ...transport import MessageRef, RenderedMessage, SendOptions
 from ...transport_runtime import TransportRuntime
 from ...utils.paths import reset_run_base_dir, set_run_base_dir
 from ..bridge import send_plain
+from .question import build_question_disabled_notice, build_question_disabled_reply
 from ..engine_overrides import supports_reasoning
 
 logger = get_logger(__name__)
@@ -170,6 +171,45 @@ async def _run_engine(
             return result
         run_base_token = set_run_base_dir(cwd)
         try:
+            if on_question is None and runner.engine == "opencode":
+
+                async def _default_on_question(
+                    evt: ActionEvent, resume: ResumeToken | None
+                ) -> None:
+                    questions = evt.action.detail.get("questions", [])
+                    if running_tasks is not None:
+                        for ref, task in list(running_tasks.items()):
+                            if ref.channel_id != chat_id:
+                                continue
+                            if ref.thread_id != thread_id:
+                                continue
+                            if task.done.is_set():
+                                continue
+                            task.suppress_cancel_output = True
+                            task.cancel_requested.set()
+                            break
+                    await reply(text=build_question_disabled_notice(questions))
+                    if resume is not None:
+                        await _run_engine(
+                            exec_cfg=exec_cfg,
+                            runtime=runtime,
+                            running_tasks=running_tasks,
+                            chat_id=chat_id,
+                            user_msg_id=user_msg_id,
+                            text=build_question_disabled_reply(questions),
+                            resume_token=resume,
+                            context=context,
+                            reply_ref=reply_ref,
+                            on_thread_known=on_thread_known,
+                            engine_override=engine_override,
+                            thread_id=thread_id,
+                            progress_ref=progress_ref,
+                            run_options=run_options,
+                            on_question=_default_on_question,
+                        )
+
+                on_question = _default_on_question
+
             run_fields = {
                 "chat_id": chat_id,
                 "user_msg_id": user_msg_id,

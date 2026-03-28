@@ -6,7 +6,11 @@ import anyio
 import pytest
 
 from yee88 import commands, plugins
-from yee88.telegram.commands.executor import _CaptureTransport, _run_engine
+from yee88.telegram.commands.executor import (
+    _CaptureTransport,
+    _TelegramCommandExecutor,
+    _run_engine,
+)
 from yee88.telegram.commands.file_transfer import _handle_file_get, _handle_file_put
 from yee88.telegram.commands.model import _handle_model_command
 from yee88.telegram.commands.reasoning import _handle_reasoning_command
@@ -37,7 +41,7 @@ from yee88.context import RunContext
 from yee88.config import ProjectConfig, ProjectsConfig
 from yee88.runner_bridge import ExecBridgeConfig, RunningTask
 from yee88.markdown import MarkdownPresenter
-from yee88.model import ResumeToken
+from yee88.model import Action, ActionEvent, CompletedEvent, ResumeToken, StartedEvent
 from yee88.progress import ProgressTracker
 from yee88.router import AutoRouter, RunnerEntry
 from yee88.scheduler import ThreadScheduler
@@ -3316,6 +3320,84 @@ async def test_run_main_loop_command_defaults_to_chat_project(
     assert codex_runner.calls == []
     assert len(pi_runner.calls) == 1
     assert transport.send_calls[-1]["message"].text == "ran:pi"
+
+
+@pytest.mark.anyio
+async def test_executor_run_one_auto_handles_opencode_question() -> None:
+    class _QuestionThenContinueRunner(ScriptRunner):
+        def __init__(self) -> None:
+            super().__init__([], engine="opencode", resume_value="ses_q1")
+
+        async def run(self, prompt: str, resume: ResumeToken | None):
+            self.calls.append((prompt, resume))
+            token = ResumeToken(engine="opencode", value="ses_q1")
+            yield StartedEvent(engine="opencode", resume=token, title="opencode")
+            await anyio.sleep(0)
+            if "Question tool is unavailable in this Telegram chat." in prompt:
+                yield CompletedEvent(
+                    engine="opencode",
+                    resume=token,
+                    ok=True,
+                    answer="continued",
+                )
+                return
+            yield ActionEvent(
+                engine="opencode",
+                action=Action(
+                    id="call_q1",
+                    kind="question",
+                    title="ask user",
+                    detail={
+                        "questions": [
+                            {
+                                "question": "Need DWS credentials?",
+                                "options": [{"label": "是", "description": "继续配置"}],
+                            }
+                        ]
+                    },
+                ),
+                phase="started",
+                ok=None,
+            )
+            await anyio.sleep_forever()
+
+    async def _noop_run_job(_) -> None:
+        return None
+
+    transport = FakeTransport()
+    runner = _QuestionThenContinueRunner()
+    runtime = TransportRuntime(
+        router=_make_router(runner),
+        projects=_empty_projects(),
+    )
+    exec_cfg = ExecBridgeConfig(
+        transport=transport,
+        presenter=MarkdownPresenter(),
+        final_notify=True,
+    )
+    executor = _TelegramCommandExecutor(
+        exec_cfg=exec_cfg,
+        runtime=runtime,
+        running_tasks={},
+        scheduler=ThreadScheduler(task_group=_NoopTaskGroup(), run_job=_noop_run_job),
+        on_thread_known=None,
+        engine_overrides_resolver=None,
+        chat_id=123,
+        user_msg_id=1,
+        thread_id=None,
+        default_engine_override=None,
+    )
+
+    result = await executor.run_one(commands.RunRequest(prompt="hello"), mode="emit")
+
+    assert result.engine == "opencode"
+    assert len(runner.calls) == 2
+    assert runner.calls[0][0] == "hello"
+    assert "Question tool is unavailable in this Telegram chat." in runner.calls[1][0]
+    assert transport.send_calls
+    assert any(
+        "自动禁用这类交互" in call["message"].text for call in transport.send_calls
+    )
 
 
 @pytest.mark.anyio
