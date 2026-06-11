@@ -138,6 +138,8 @@ class JsonlStreamState:
 
 
 class JsonlSubprocessRunner(BaseRunner):
+    subprocess_grace_s: float | None = None
+
     def get_logger(self) -> Any:
         return getattr(self, "logger", get_logger(__name__))
 
@@ -661,20 +663,74 @@ class JsonlSubprocessRunner(BaseRunner):
 
             async with anyio.create_task_group() as tg:
                 tg.start_soon(_collect_stderr)
-                async for evt in self._iter_jsonl_events(
-                    stdout=proc.stdout,
-                    stream=stream,
-                    state=state,
-                    resume=resume,
-                    logger=logger,
-                    pid=proc.pid,
-                ):
-                    yield evt
 
-                rc = await proc.wait()
+                timed_out = False
+                grace = self.subprocess_grace_s
+
+                if grace is not None and grace > 0:
+                    with anyio.move_on_after(grace) as scope:
+                        async for evt in self._iter_jsonl_events(
+                            stdout=proc.stdout,
+                            stream=stream,
+                            state=state,
+                            resume=resume,
+                            logger=logger,
+                            pid=proc.pid,
+                        ):
+                            yield evt
+
+                        rc = await proc.wait()
+                    if scope.cancel_called:
+                        timed_out = True
+                        # Kill the process so stderr/stdout pipes close,
+                        # unblocking _collect_stderr and allowing the
+                        # task_group to shut down cleanly.
+                        try:
+                            proc.terminate()
+                        except Exception:
+                            pass
+                else:
+                    async for evt in self._iter_jsonl_events(
+                        stdout=proc.stdout,
+                        stream=stream,
+                        state=state,
+                        resume=resume,
+                        logger=logger,
+                        pid=proc.pid,
+                    ):
+                        yield evt
+
+                    rc = await proc.wait()
 
             stream.stderr_text = stderr_result[0] if stderr_result else ""
             no_output = stream.jsonl_seq == 0
+
+            if timed_out:
+                logger.warning(
+                    "subprocess.timeout",
+                    pid=proc.pid,
+                    grace_s=grace,
+                    jsonl_seq=stream.jsonl_seq,
+                    resume=resume.value if resume else None,
+                )
+                events = self.process_error_events(
+                    -1,
+                    resume=resume,
+                    found_session=stream.found_session,
+                    state=state,
+                    stderr=f"subprocess timed out after {grace:.0f}s with no response",
+                )
+                for evt in events:
+                    if isinstance(evt, CompletedEvent):
+                        self._log_completed_event(
+                            logger=logger,
+                            pid=proc.pid,
+                            event=evt,
+                            source="timeout",
+                        )
+                    yield evt
+                return
+
             logger.info("subprocess.exit", pid=proc.pid, rc=rc)
             if stream.did_emit_completed:
                 return
