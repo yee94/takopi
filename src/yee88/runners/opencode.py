@@ -466,7 +466,7 @@ class OpenCodeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
     model: str | None = None
     agent: str | None = None
     session_title: str = "opencode"
-    subprocess_grace_s: float | None = 120
+    subprocess_grace_s: float | None = None
     logger = logger
 
     def command(self) -> str:
