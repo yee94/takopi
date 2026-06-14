@@ -248,6 +248,7 @@ async def _create_handoff_topic(
 
         resume_token = ResumeToken(engine=engine, value=session_id)
         await store.set_session_resume(chat_id, thread_id, resume_token)
+        await store.set_session_mode(chat_id, thread_id, "chat")
 
         sent = await _send_message_with_client(
             client,
@@ -494,6 +495,7 @@ def send(
             # 复用已有 topic
             resume_token = ResumeToken(engine=engine_id, value=session_id)
             await store.set_session_resume(chat_id, existing_thread_id, resume_token)
+            await store.set_session_mode(chat_id, existing_thread_id, "chat")
             thread_id = existing_thread_id
             reused = True
 
@@ -516,6 +518,7 @@ def send(
 
         # 设置 topic 默认引擎，确保 Telegram 端继续对话时使用正确引擎
         await store.set_default_engine(chat_id, thread_id, engine_id)
+        await store.set_session_mode(chat_id, thread_id, "chat")
 
         # 从原 session 提取模型 ID，设置为 topic 的 engine override
         model_id = source.get_model_id(session_id)
@@ -549,6 +552,7 @@ def send(
             thread_id, success = created
             reused = False
             await store.set_default_engine(chat_id, thread_id, engine_id)
+            await store.set_session_mode(chat_id, thread_id, "chat")
             if model_id:
                 override = EngineOverrides(model=model_id)
                 await store.set_engine_override(

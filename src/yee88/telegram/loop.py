@@ -650,6 +650,12 @@ class ResumeDecision:
     handled_by_running_task: bool
 
 
+def _same_run_context(left: RunContext | None, right: RunContext | None) -> bool:
+    if left is None or right is None:
+        return left is right
+    return left.project == right.project and left.branch == right.branch
+
+
 class ResumeResolver:
     def __init__(
         self,
@@ -727,17 +733,30 @@ class ResumeResolver:
             and topic_key is not None
             and not project_stateless
         ):
-            stored = await self._topic_store.get_session_resume(
-                topic_key[0],
-                topic_key[1],
-                engine_for_session,
+            thread = await self._topic_store.get_thread(topic_key[0], topic_key[1])
+            topic_session_mode = await self._topic_store.get_session_mode(
+                topic_key[0], topic_key[1]
             )
-            if stored is not None:
-                resume_token = stored
+            allow_topic_resume = (
+                engine_for_session != "opencode" or topic_session_mode == "chat"
+            )
+            if (
+                thread is not None
+                and allow_topic_resume
+                and _same_run_context(thread.context, context)
+            ):
+                stored = await self._topic_store.get_session_resume(
+                    topic_key[0],
+                    topic_key[1],
+                    engine_for_session,
+                )
+                if stored is not None:
+                    resume_token = stored
         if (
             resume_token is None
             and self._chat_session_store is not None
             and chat_session_key is not None
+            and engine_for_session != "opencode"
         ):
             stored = await self._chat_session_store.get_session_resume(
                 chat_session_key[0],
@@ -1274,12 +1293,19 @@ async def run_main_loop(
                     if base_cb is not None:
                         await base_cb(token, done)
                     if state.topic_store is not None and topic_key is not None:
+                        if token.engine == "opencode":
+                            mode = await state.topic_store.get_session_mode(
+                                topic_key[0], topic_key[1]
+                            )
+                            if mode != "chat":
+                                return
                         await state.topic_store.set_session_resume(
                             topic_key[0], topic_key[1], token
                         )
                     if (
                         state.chat_session_store is not None
                         and chat_session_key is not None
+                        and token.engine != "opencode"
                     ):
                         await state.chat_session_store.set_session_resume(
                             chat_session_key[0], chat_session_key[1], token

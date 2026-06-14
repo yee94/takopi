@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from collections.abc import AsyncIterator, Callable
@@ -608,6 +609,8 @@ class JsonlSubprocessRunner(BaseRunner):
                 pid=pid,
             ):
                 yield evt
+                if stream.did_emit_completed:
+                    return
 
     async def run_impl(
         self, prompt: str, resume: ResumeToken | None
@@ -629,6 +632,9 @@ class JsonlSubprocessRunner(BaseRunner):
         )
 
         cwd = get_run_base_dir()
+        if cwd is not None:
+            env = dict(os.environ) if env is None else dict(env)
+            env["PWD"] = str(cwd)
 
         async with manage_subprocess(
             cmd,
@@ -661,8 +667,24 @@ class JsonlSubprocessRunner(BaseRunner):
                     await drain_stderr(proc.stderr, logger, tag)  # type: ignore[arg-type]
                 )
 
+            async def _close_receive_stream(stream: Any) -> None:
+                try:
+                    await stream.aclose()
+                except Exception:
+                    pass
+
+            async def _wait_for_exit_and_close_pipes() -> None:
+                nonlocal rc
+                rc = await proc.wait()
+                await anyio.sleep(0.1)
+                if proc.stdout is not None:
+                    await _close_receive_stream(proc.stdout)
+                if proc.stderr is not None:
+                    await _close_receive_stream(proc.stderr)
+
             async with anyio.create_task_group() as tg:
                 tg.start_soon(_collect_stderr)
+                tg.start_soon(_wait_for_exit_and_close_pipes)
 
                 timed_out = False
                 grace = self.subprocess_grace_s
@@ -679,7 +701,6 @@ class JsonlSubprocessRunner(BaseRunner):
                         ):
                             yield evt
 
-                        rc = await proc.wait()
                     if scope.cancel_called:
                         timed_out = True
                         # Kill the process so stderr/stdout pipes close,
@@ -699,8 +720,6 @@ class JsonlSubprocessRunner(BaseRunner):
                         pid=proc.pid,
                     ):
                         yield evt
-
-                    rc = await proc.wait()
 
             stream.stderr_text = stderr_result[0] if stderr_result else ""
             no_output = stream.jsonl_seq == 0
