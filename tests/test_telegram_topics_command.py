@@ -24,6 +24,7 @@ from tests.telegram_fakes import (
     make_cfg,
 )
 from yee88.transport_runtime import TransportRuntime
+from yee88.context import RunContext
 
 
 def _msg(
@@ -187,3 +188,55 @@ async def test_topic_command_requires_args(tmp_path: Path) -> None:
 
     text = transport.send_calls[-1]["message"].text
     assert "usage: /topic" in text
+
+
+@pytest.mark.anyio
+async def test_topic_command_defaults_to_project_only(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    runtime, _ = _runtime(tmp_path)
+    cfg = replace(
+        make_cfg(transport),
+        runtime=runtime,
+        topics=TelegramTopicsSettings(enabled=True, scope="all"),
+    )
+    store = TopicStateStore(tmp_path / "topics.json")
+    msg = _msg("/topic alpha")
+
+    await _handle_topic_command(
+        cfg,
+        msg,
+        args_text="alpha",
+        store=store,
+        resolved_scope="all",
+        scope_chat_ids=frozenset({msg.chat_id}),
+    )
+
+    snapshot = await store.get_thread(msg.chat_id, 1)
+    assert snapshot is not None
+    assert snapshot.context == RunContext(project="alpha", branch=None)
+
+
+@pytest.mark.anyio
+async def test_topic_command_keeps_explicit_branch(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    runtime, _ = _runtime(tmp_path)
+    cfg = replace(
+        make_cfg(transport),
+        runtime=runtime,
+        topics=TelegramTopicsSettings(enabled=True, scope="all"),
+    )
+    store = TopicStateStore(tmp_path / "topics.json")
+    msg = _msg("/topic alpha @feature")
+
+    await _handle_topic_command(
+        cfg,
+        msg,
+        args_text="alpha @feature",
+        store=store,
+        resolved_scope="all",
+        scope_chat_ids=frozenset({msg.chat_id}),
+    )
+
+    snapshot = await store.get_thread(msg.chat_id, 1)
+    assert snapshot is not None
+    assert snapshot.context == RunContext(project="alpha", branch="feature")

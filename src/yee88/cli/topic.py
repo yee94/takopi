@@ -17,11 +17,13 @@ from ..telegram.topic_state import TopicStateStore, resolve_state_path
 from ..context import RunContext
 
 
-from ..utils.git import resolve_default_base, resolve_main_worktree_root
+from ..utils.git import resolve_default_base
+
+CURRENT_BRANCH_SENTINEL = "__yee88_current_branch__"
 
 
 def _get_current_branch(cwd: Path) -> str | None:
-    """Get current git branch name."""
+    """Get current git branch name, returning None outside a git worktree."""
     import subprocess
 
     try:
@@ -34,7 +36,7 @@ def _get_current_branch(cwd: Path) -> str | None:
         )
         if result.returncode == 0:
             branch = result.stdout.strip()
-            return branch if branch else None
+            return branch or None
     except FileNotFoundError:
         pass
     return None
@@ -202,6 +204,8 @@ def _ensure_project(
     project: str,
     project_root: Path,
     config_path: Path,
+    *,
+    enable_worktrees: bool = False,
 ) -> None:
     """Ensure project is registered in config, auto-init if needed."""
     config, cfg_path = load_or_init_config()
@@ -219,15 +223,14 @@ def _ensure_project(
     if project in projects:
         return
     
-    # Auto-init project
-    worktree_base = resolve_default_base(project_root)
-    
     entry: dict[str, object] = {
         "path": str(project_root),
-        "worktrees_dir": ".worktrees",
     }
-    if worktree_base:
-        entry["worktree_base"] = worktree_base
+    if enable_worktrees:
+        worktree_base = resolve_default_base(project_root)
+        entry["worktrees_dir"] = ".worktrees"
+        if worktree_base:
+            entry["worktree_base"] = worktree_base
     
     projects[project] = entry
     write_config(config, cfg_path)
@@ -245,6 +248,16 @@ def run_topic(
 ) -> None:
     """Create or delete a Telegram topic bound to project/branch."""
     cwd = Path.cwd()
+    if branch == CURRENT_BRANCH_SENTINEL:
+        branch = _get_current_branch(cwd)
+        if branch is None:
+            typer.echo(
+                "error: cannot determine current git branch. "
+                "Pass --branch <name> or omit --branch for project-only binding.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+    branch_explicit = branch_explicit or branch is not None
     
     # Resolve project root
     project_root = _get_project_root(cwd)
@@ -279,14 +292,15 @@ def run_topic(
             )
             raise typer.Exit(code=1)
     
-    # Default branch from current git branch
-    if branch is None:
-        branch = _get_current_branch(cwd)
-    
     # Auto-init project if not exists (only for create mode)
     if not delete and not project_exists:
         try:
-            _ensure_project(project_key, project_root, cfg_path)
+            _ensure_project(
+                project_key,
+                project_root,
+                cfg_path,
+                enable_worktrees=branch_explicit,
+            )
             # Reload settings after auto-init
             settings, cfg_path = load_settings(cfg_path)
         except ConfigError as e:

@@ -58,7 +58,7 @@ from .init import (
     run_init,
 )
 from .onboarding_cmd import chat_id, onboarding_paths
-from .topic import run_topic
+from .topic import CURRENT_BRANCH_SENTINEL, run_topic
 from .send_file import send_file
 from .plugins import plugins_cmd
 from .run import (
@@ -130,17 +130,22 @@ def init(
 
 
 def topic_init(
+    ctx: typer.Context,
     project: str | None = typer.Argument(
         None, help="Project alias (defaults to current directory name)."
     ),
-    branch: str | None = typer.Option(
-        None, "--branch", "-b", help="Branch name (defaults to current git branch)."
+    branch_flag: bool = typer.Option(
+        False,
+        "--branch",
+        "-b",
+        help="Enable branch/worktree binding; optional following value defaults to current git branch.",
     ),
     system_prompt: str | None = typer.Option(
         None, "--system-prompt", "-s", help="System prompt for this topic."
     ),
 ) -> None:
     """Create a Telegram topic bound to a project/branch."""
+    branch, branch_explicit = _resolve_optional_branch(ctx, branch_flag)
     run_topic(
         project=project,
         branch=branch,
@@ -152,20 +157,41 @@ def topic_init(
 
 
 def topic_delete(
+    ctx: typer.Context,
     project: str | None = typer.Argument(
         None, help="Project alias (defaults to current directory name)."
     ),
-    branch: str | None = typer.Option(
-        None, "--branch", "-b", help="Branch name (defaults to current git branch)."
+    branch_flag: bool = typer.Option(
+        False,
+        "--branch",
+        "-b",
+        help="Enable branch/worktree binding; optional following value defaults to current git branch.",
     ),
 ) -> None:
     """Delete a Telegram topic binding."""
+    branch, branch_explicit = _resolve_optional_branch(ctx, branch_flag)
     run_topic(
         project=project,
         branch=branch,
+        branch_explicit=branch_explicit,
         delete=True,
         config_path=None,
     )
+
+
+def _resolve_optional_branch(
+    ctx: typer.Context, branch_flag: bool
+) -> tuple[str | None, bool]:
+    if not branch_flag:
+        if ctx.args:
+            raise typer.BadParameter(f"unexpected argument: {ctx.args[0]}")
+        return None, False
+    if not ctx.args:
+        return CURRENT_BRANCH_SENTINEL, True
+    branch = ctx.args[0]
+    if len(ctx.args) > 1:
+        raise typer.BadParameter(f"unexpected argument: {ctx.args[1]}")
+    return branch, True
 
 
 def doctor() -> None:
@@ -212,8 +238,11 @@ def create_app() -> typer.Typer:
     config_app.command(name="set")(config_set)
     config_app.command(name="unset")(config_unset)
     topic_app = typer.Typer(help="Manage Telegram topics.")
-    topic_app.command(name="init")(topic_init)
-    topic_app.command(name="delete")(topic_delete)
+    topic_context_settings = {"allow_extra_args": True, "ignore_unknown_options": False}
+    topic_app.command(name="init", context_settings=topic_context_settings)(topic_init)
+    topic_app.command(name="delete", context_settings=topic_context_settings)(
+        topic_delete
+    )
     app.command(name="init")(init)
     app.add_typer(topic_app, name="topic")
     app.command(name="chat-id")(chat_id)

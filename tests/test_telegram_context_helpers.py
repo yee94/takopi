@@ -61,9 +61,9 @@ def test_usage_helpers() -> None:
     )
     assert (
         tg_context._usage_topic(chat_project=None)
-        == "usage: `/topic <project> @branch`"
+        == "usage: `/topic <project> [@branch]`"
     )
-    assert tg_context._usage_topic(chat_project="alpha") == "usage: `/topic @branch`"
+    assert tg_context._usage_topic(chat_project="alpha") == "usage: `/topic [@branch]`"
 
 
 def test_parse_project_branch_args_missing_project(tmp_path: Path) -> None:

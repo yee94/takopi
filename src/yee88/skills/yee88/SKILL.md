@@ -289,31 +289,45 @@ yee88 cron list
 ### 4. 话题管理
 
 #### 初始化话题
+
 ```bash
-yee88 topic init
+yee88 topic init [PROJECT] [--branch [NAME]]
 ```
 
-在当前目录创建话题并绑定到项目。
+在当前目录创建 Telegram 话题并绑定到项目。**默认只绑定项目目录**，不关联 git 分支，无需 git 仓库即可运行。
 
-#### 创建话题
-```bash
-yee88 topic create <project> [@branch]
-```
+`--branch` 三种用法：
+| 命令 | 效果 |
+|------|------|
+| `yee88 topic init` | 绑定当前目录（项目名=目录名） |
+| `yee88 topic init --branch` | 自动取当前 git 分支，绑定 project@branch |
+| `yee88 topic init --branch main` | 绑定 project@main |
+| `yee88 topic init --branch feat/x` | 绑定 project@feat/x |
 
 示例：
 ```bash
-yee88 topic create myproject
-yee88 topic create myproject @feat/new-feature
+# 非 git 目录 / 不想绑定分支
+yee88 topic init myproject
+
+# 绑定当前 git 分支
+yee88 topic init myproject --branch
+
+# 绑定指定分支
+yee88 topic init myproject --branch feat/new-feature
 ```
 
-#### 查看话题状态
+#### 删除话题
 ```bash
-yee88 topic status
+yee88 topic delete [PROJECT] [--branch [NAME]]
 ```
 
-#### 切换话题
+#### 在 Telegram 中管理话题
+在话题内发送 `/topic` 命令：
 ```bash
-yee88 topic switch <topic_id>
+/topic <project> [@branch]     # 创建/绑定话题
+/ctx set <project> [@branch]   # 绑定上下文
+/ctx show                       # 查看上下文
+/new                            # 清除话题内的会话记录
 ```
 
 ### 5. 引擎运行
@@ -384,7 +398,7 @@ yee88 onboarding-paths
 ### 配置文件位置
 - 主配置：`~/.yee88/yee88.toml`
 - 定时任务：`~/.yee88/cron.toml`
-- 话题状态：`~/.yee88/topics.json`
+- 话题状态：`~/.yee88/telegram_topics_state.json`
 
 ### 常用配置示例
 
@@ -457,7 +471,7 @@ yee88 config set transports.telegram.chat_id -1001234567890
 yee88 config set transports.telegram.topics.enabled true
 
 # 3. 创建团队话题
-yee88 topic create team-project @main
+yee88 topic init team-project --branch main
 
 # 4. 设置定时提醒（使用项目别名）
 yee88 cron add daily-sync "0 10 * * 1-5" "团队同步时间" --project team-project
@@ -600,9 +614,8 @@ yee88 send-file /path/to/doc.pdf -c 123456789 -t 456
 | `yee88 cron disable <id>` | 禁用任务 |
 | `yee88 cron remove <id>` | 删除任务 |
 | `yee88 cron run <id>` | 立即执行任务 |
-| `yee88 topic init` | 初始化话题 |
-| `yee88 topic create <project> [@branch]` | 创建话题 |
-| `yee88 topic status` | 查看话题状态 |
+| `yee88 topic init [PROJECT] [--branch [NAME]]` | 初始化话题 |
+| `yee88 topic delete [PROJECT] [--branch [NAME]]` | 删除话题 |
 | `yee88 doctor` | 运行诊断检查 |
 | `yee88 plugins` | 列出插件 |
 | `yee88 chat-id` | 获取 Chat ID |

@@ -296,7 +296,7 @@ async def _handle_topic_command(
     context, error = _parse_project_branch_args(
         args_text,
         runtime=cfg.runtime,
-        require_branch=True,
+        require_branch=False,
         chat_project=chat_project,
     )
     if error is not None or context is None:
