@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from typing import TYPE_CHECKING
 
@@ -97,6 +98,7 @@ async def _get_opencode_models() -> list[str]:
             "models",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env={**os.environ, "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS": "false"},
         )
         stdout, _ = await proc.communicate()
         if proc.returncode != 0:

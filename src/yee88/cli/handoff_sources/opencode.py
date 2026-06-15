@@ -7,6 +7,7 @@ behind the :class:`HandoffSource` protocol so the CLI can dispatch by engine.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
 from dataclasses import dataclass
@@ -39,6 +40,7 @@ class OpenCodeHandoffSource:
                 capture_output=True,
                 text=True,
                 check=True,
+                env={**os.environ, "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS": "false"},
             )
             data = json.loads(result.stdout)
             sessions = [

@@ -14,6 +14,7 @@ Session IDs use the format: ses_XXXX (e.g., ses_494719016ffe85dkDMj0FPRbHK)
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -48,6 +49,20 @@ from .tool_actions import tool_input_path, tool_kind_and_title
 logger = get_logger(__name__)
 
 ENGINE: EngineId = "opencode"
+
+# Environment variable that must be set for every opencode subprocess
+# invocation to disable experimental background subagent spawning.
+_OPENCODE_MANDATORY_ENV: dict[str, str] = {
+    "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS": "false",
+}
+
+
+def _opencode_env() -> dict[str, str]:
+    """Return an env dict with mandatory opencode overrides merged into os.environ."""
+    env = dict(os.environ)
+    env.update(_OPENCODE_MANDATORY_ENV)
+    return env
+
 
 _RESUME_RE = re.compile(
     r"(?im)^\s*`?opencode(?:\s+run)?\s+(?:--session|-s)\s+(?P<token>ses_[A-Za-z0-9]+)`?\s*$"
@@ -96,6 +111,7 @@ def _resolve_opencode_primary_agent(opencode_cmd: str, cwd: str) -> str | None:
                 text=False,
                 timeout=10,
                 check=False,
+                env=_opencode_env(),
             )
             stdout_file.seek(0)
             raw_stdout = stdout_file.read()
@@ -140,6 +156,7 @@ def _recover_assistant_text_from_session(
             stderr=subprocess.DEVNULL,
             timeout=15,
             check=False,
+            env=_opencode_env(),
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -471,6 +488,10 @@ class OpenCodeRunner(ResumeTokenMixin, JsonlSubprocessRunner):
 
     def command(self) -> str:
         return self.opencode_cmd
+
+    def env(self, *, state: Any) -> dict[str, str] | None:
+        """Inject mandatory opencode env vars (e.g. disable background subagents)."""
+        return _opencode_env()
 
     def resolve_agent(self) -> str | None:
         if self.agent:
