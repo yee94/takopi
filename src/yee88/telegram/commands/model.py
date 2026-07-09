@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import re
 from typing import TYPE_CHECKING
 
 from ...context import RunContext
+from ...runners.opencode import _opencode_env
 from ..chat_prefs import ChatPrefsStore
 from ..engine_overrides import EngineOverrides, resolve_override_value
 from ..files import split_command_args
@@ -98,7 +98,7 @@ async def _get_opencode_models() -> list[str]:
             "models",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**os.environ, "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS": "false"},
+            env=_opencode_env(),
         )
         stdout, _ = await proc.communicate()
         if proc.returncode != 0:

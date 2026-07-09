@@ -56,11 +56,40 @@ _OPENCODE_MANDATORY_ENV: dict[str, str] = {
     "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS": "false",
 }
 
+# Optional yee88-local OpenCode config. When present, opencode subprocesses
+# use this file instead of ~/.config/opencode (via OPENCODE_CONFIG +
+# XDG_CONFIG_HOME isolation). Prefer .jsonc over .json when both exist.
+_YEE88_OPENCODE_CONFIG_NAMES: tuple[str, ...] = ("opencode.jsonc", "opencode.json")
+
+
+def _yee88_home() -> Path:
+    return Path.home() / ".yee88"
+
+
+def _resolve_yee88_opencode_config() -> Path | None:
+    """Return ~/.yee88/opencode.json(c) if it exists, else None."""
+    home = _yee88_home()
+    for name in _YEE88_OPENCODE_CONFIG_NAMES:
+        path = home / name
+        if path.is_file():
+            return path
+    return None
+
 
 def _opencode_env() -> dict[str, str]:
-    """Return an env dict with mandatory opencode overrides merged into os.environ."""
+    """Return an env dict with mandatory opencode overrides merged into os.environ.
+
+    If ~/.yee88/opencode.json(c) exists, point OpenCode at that file and isolate
+    XDG_CONFIG_HOME under ~/.yee88 so the global ~/.config/opencode plugin list
+    is not merged in. Otherwise fall back to the user's normal OpenCode config.
+    """
     env = dict(os.environ)
     env.update(_OPENCODE_MANDATORY_ENV)
+    config_path = _resolve_yee88_opencode_config()
+    if config_path is not None:
+        env["OPENCODE_CONFIG"] = str(config_path)
+        # Remap config home so OpenCode does not also load ~/.config/opencode.
+        env["XDG_CONFIG_HOME"] = str(_yee88_home())
     return env
 
 

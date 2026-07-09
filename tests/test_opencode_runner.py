@@ -968,3 +968,65 @@ def test_recover_assistant_text_returns_none_on_failure(
         opencode_runner._recover_assistant_text_from_session("opencode", "")
         is None
     )
+
+
+def test_resolve_yee88_opencode_config_prefers_jsonc(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prefer ~/.yee88/opencode.jsonc over opencode.json when both exist."""
+    monkeypatch.setattr(opencode_runner, "_yee88_home", lambda: tmp_path)
+    jsonc = tmp_path / "opencode.jsonc"
+    json_path = tmp_path / "opencode.json"
+    jsonc.write_text('{"plugin":[]}')
+    json_path.write_text('{"plugin":[]}')
+
+    assert opencode_runner._resolve_yee88_opencode_config() == jsonc
+
+
+def test_resolve_yee88_opencode_config_falls_back_to_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(opencode_runner, "_yee88_home", lambda: tmp_path)
+    json_path = tmp_path / "opencode.json"
+    json_path.write_text('{"plugin":[]}')
+
+    assert opencode_runner._resolve_yee88_opencode_config() == json_path
+
+
+def test_resolve_yee88_opencode_config_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(opencode_runner, "_yee88_home", lambda: tmp_path)
+    assert opencode_runner._resolve_yee88_opencode_config() is None
+
+
+def test_opencode_env_uses_yee88_config_when_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When ~/.yee88/opencode.json exists, isolate via OPENCODE_CONFIG + XDG."""
+    monkeypatch.setattr(opencode_runner, "_yee88_home", lambda: tmp_path)
+    config = tmp_path / "opencode.json"
+    config.write_text('{"plugin":["@tencent/imate-opencode-plugin@0.2.2"]}')
+    monkeypatch.setenv("OPENCODE_CONFIG", "/should/be/overridden")
+    monkeypatch.setenv("XDG_CONFIG_HOME", "/should/be/overridden")
+
+    env = opencode_runner._opencode_env()
+
+    assert env["OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS"] == "false"
+    assert env["OPENCODE_CONFIG"] == str(config)
+    assert env["XDG_CONFIG_HOME"] == str(tmp_path)
+
+
+def test_opencode_env_falls_back_to_global_when_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without ~/.yee88/opencode.json(c), do not remap OpenCode config paths."""
+    monkeypatch.setattr(opencode_runner, "_yee88_home", lambda: tmp_path)
+    monkeypatch.delenv("OPENCODE_CONFIG", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+    env = opencode_runner._opencode_env()
+
+    assert env["OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS"] == "false"
+    assert "OPENCODE_CONFIG" not in env
+    assert "XDG_CONFIG_HOME" not in env
